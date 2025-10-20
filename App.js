@@ -7,6 +7,7 @@ import TabunganScreen from "./src/screens/TabunganScreen";
 import TambahTagihanScreen from "./src/screens/TambahTagihanScreen";
 import TagihanScreen from "./src/screens/TagihanScreen";
 import RiwayatScreen from "./src/screens/RiwayatScreen";
+//import RiwayatScreen from "./src/screens/RiwayatScreen";
 
 const Stack = createStackNavigator();
 
