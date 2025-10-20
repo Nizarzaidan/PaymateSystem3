@@ -1,20 +1,50 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import { createStackNavigator } from "@react-navigation/stack";
+import Dashboard from "./src/screens/Dashboard";
+import TambahTransaksi from "./src/screens/TambahTransaksi";
+import TabunganScreen from "./src/screens/TabunganScreen";
+import TambahTagihanScreen from "./src/screens/TambahTagihanScreen";
+import TagihanScreen from "./src/screens/TagihanScreen";
+import RiwayatScreen from "./src/screens/RiwayatScreen";
+
+const Stack = createStackNavigator();
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName="Dashboard">
+        <Stack.Screen
+          name="Dashboard"
+          component={Dashboard}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="TambahTransaksi"
+          component={TambahTransaksi}
+          options={{ title: "Tambah Transaksi" }}
+        />
+        <Stack.Screen
+          name="TabunganScreen"
+          component={TabunganScreen}
+          options={{ title: "Tabungan" }}
+        />
+        <Stack.Screen
+          name="TambahTagihanScreen"
+          component={TambahTagihanScreen}
+          options={{ title: "Tambah Tagihan" }}
+        />
+        <Stack.Screen
+          name="TagihanScreen"
+          component={TagihanScreen}
+          options={{ title: "Tagihan" }}
+        />
+        <Stack.Screen
+          name="RiwayatScreen"
+          component={RiwayatScreen}
+          options={{ title: "Riwayat Transaksi" }}
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
