@@ -28,7 +28,7 @@ export default function TagihanScreen() {
       console.log("Data diterima:", response.data);
 
       if (Array.isArray(response.data)) {
-        setTagihan(response.data);
+        setTagihan([...response.data].reverse());
       } else {
         console.warn("Data bukan array:", response.data);
         setTagihan([]);
@@ -106,14 +106,6 @@ export default function TagihanScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#6A5AE0" />
-
-      {/* Header */}
-      {/* <View style={styles.header}>
-        <Text style={styles.headerTitle}>💳 Daftar Tagihan</Text>
-        <Text style={styles.headerSubtitle}>
-          Pantau dan kelola semua tagihanmu di sini
-        </Text>
-      </View> */}
 
       {/* Daftar Tagihan */}
       {tagihan.length === 0 ? (

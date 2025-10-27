@@ -32,79 +32,120 @@ export default function RiwayatScreen() {
     }
   };
 
-  const renderItem = ({ item }) => (
-    <View style={styles.card}>
-      <View style={styles.cardRow}>
-        <View
-          style={[
-            styles.iconWrapper,
-            item.tipeTransaksi === "pemasukan"
-              ? styles.incomeBg
-              : styles.expenseBg,
-          ]}
-        >
-          <Ionicons
-            name={
+  // ✅ Daftar kategori berdasarkan tipe transaksi
+  const kategoriList = {
+    pengeluaran: [
+      { id_kategori: 3, nama_kategori: "Fashion" },
+      { id_kategori: 4, nama_kategori: "Pendidikan" },
+      { id_kategori: 5, nama_kategori: "Pulsa" },
+      { id_kategori: 6, nama_kategori: "Air" },
+      { id_kategori: 7, nama_kategori: "Listrik" },
+      { id_kategori: 8, nama_kategori: "Pajak" },
+      { id_kategori: 10, nama_kategori: "Makanan" },
+      { id_kategori: 11, nama_kategori: "Transportasi" },
+      { id_kategori: 12, nama_kategori: "Belanja" },
+    ],
+    pemasukan: [
+      { id_kategori: 1, nama_kategori: "Deposit" },
+      { id_kategori: 2, nama_kategori: "Investasi" },
+      { id_kategori: 9, nama_kategori: "Gaji" },
+    ],
+  };
+
+  // ✅ Fungsi bantu untuk mencari nama kategori
+  const getNamaKategori = (id, tipeTransaksi) => {
+    const list = kategoriList[tipeTransaksi] || [];
+    const kategori = list.find((k) => k.id_kategori === id);
+    return kategori ? kategori.nama_kategori : "Tidak diketahui";
+  };
+
+  // ✅ Tampilan tiap item
+  const renderItem = ({ item }) => {
+    // Ambil nama kategori berdasarkan id dan tipe
+    const idKategori = item.kategori?.id_kategori || item.kategori || null;
+    const namaKategori = getNamaKategori(idKategori, item.tipeTransaksi);
+
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardRow}>
+          <View
+            style={[
+              styles.iconWrapper,
               item.tipeTransaksi === "pemasukan"
-                ? "arrow-down-circle"
-                : "arrow-up-circle"
+                ? styles.incomeBg
+                : styles.expenseBg,
+            ]}
+          >
+            <Ionicons
+              name={
+                item.tipeTransaksi === "pemasukan"
+                  ? "arrow-down-circle"
+                  : "arrow-up-circle"
+              }
+              size={26}
+              color={
+                item.tipeTransaksi === "pemasukan" ? "#00ff99ff" : "#ff0000ff"
+              }
+            />
+          </View>
+
+          <View style={{ flex: 1 }}>
+            {/* ✅ Nama kategori tampil di sini */}
+            <Text style={styles.itemCategory}>
+              {(() => {
+                // pastikan jenis_transaksi selalu lowercase biar cocok
+                const jenisTransaksiKey = item.jenis_transaksi?.toLowerCase();
+
+                const kategoriArray = kategoriList[jenisTransaksiKey] || [];
+
+                // pastikan id_kategori dibandingkan sebagai integer
+                const kategori = kategoriArray.find(
+                  (k) => k.id_kategori === parseInt(item.id_kategori)
+                );
+
+                return kategori ? kategori.nama_kategori : "Tidak diketahui";
+              })()}
+            </Text>
+
+            <Text style={styles.itemDesc}>{item.catatan || "-"}</Text>
+            <Text style={styles.itemDate}>
+              {new Date(item.tanggalTransaksi).toLocaleDateString("id-ID", {
+                day: "2-digit",
+                month: "long",
+                year: "numeric",
+              })}
+            </Text>
+          </View>
+
+          <Text
+            style={
+              item.tipeTransaksi === "pemasukan"
+                ? styles.incomeText
+                : styles.expenseText
             }
-            size={26}
-            color={item.tipeTransaksi === "pemasukan" ? "#16A34A" : "#DC2626"}
-          />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.itemDesc}>{item.catatan || "-"}</Text>
-          <Text style={styles.itemDate}>
-            {new Date(item.tanggalTransaksi).toLocaleDateString("id-ID", {
-              day: "2-digit",
-              month: "long",
-              year: "numeric",
-            })}
+          >
+            {item.tipeTransaksi === "pemasukan" ? "+" : "-"} Rp{" "}
+            {item.nominal.toLocaleString("id-ID")}
           </Text>
         </View>
-        <Text
-          style={
-            item.tipeTransaksi === "pemasukan"
-              ? styles.incomeText
-              : styles.expenseText
-          }
-        >
-          {item.tipeTransaksi === "pemasukan" ? "+" : "-"} Rp{" "}
-          {item.nominal.toLocaleString("id-ID")}
-        </Text>
       </View>
-    </View>
-  );
+    );
+  };
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563EB" />
-        <Text style={{ marginTop: 10, color: "#6B7280" }}>
-          Memuat riwayat transaksi...
-        </Text>
-      </View>
+      <LinearGradient
+        colors={["#60A5FA", "#2563EB"]}
+        style={styles.loadingContainer}
+      >
+        <ActivityIndicator size="large" color="#fff" />
+        <Text style={styles.loadingText}>Memuat riwayat transaksi...</Text>
+      </LinearGradient>
     );
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* HEADER DENGAN GRADIENT */}
-      {/* HEADER DENGAN GRADIENT UNGU */}
-      <LinearGradient
-        colors={["#A855F7", "#6D28D9"]}
-        style={styles.header}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <Text style={styles.headerTitle}>Riwayat Transaksi</Text>
-        <Text style={styles.headerSubtitle}>
-          Lihat catatan pemasukan & pengeluaran Anda
-        </Text>
-      </LinearGradient>
-
-      {/* LIST TRANSAKSI */}
       {transaksi.length > 0 ? (
         <FlatList
           data={transaksi}
@@ -117,7 +158,7 @@ export default function RiwayatScreen() {
         />
       ) : (
         <View style={styles.emptyContainer}>
-          <Ionicons name="file-tray-outline" size={50} color="#9CA3AF" />
+          <Ionicons name="file-tray-outline" size={60} color="#C4B5FD" />
           <Text style={styles.emptyText}>Belum ada transaksi</Text>
         </View>
       )}
@@ -128,40 +169,29 @@ export default function RiwayatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#F3F0FF",
   },
-  header: {
-    paddingVertical: 30,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    marginBottom: 15,
-    elevation: 4,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
   },
-  headerTitle: {
-    color: "white",
-    fontSize: 22,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  headerSubtitle: {
-    color: "rgba(255,255,255,0.8)",
-    fontSize: 13,
-    marginTop: 5,
-    textAlign: "center",
+  loadingText: {
+    marginTop: 10,
+    color: "#E9D5FF",
+    fontSize: 16,
   },
   card: {
-    backgroundColor: "white",
+    backgroundColor: "#FFFFFF",
     borderRadius: 15,
     padding: 15,
-    marginBottom: 10,
+    marginBottom: 12,
     marginHorizontal: 15,
     shadowColor: "#000",
     shadowOpacity: 0.05,
     shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   cardRow: {
     flexDirection: "row",
@@ -170,45 +200,44 @@ const styles = StyleSheet.create({
   iconWrapper: {
     width: 45,
     height: 45,
-    borderRadius: 10,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
   },
   incomeBg: {
-    backgroundColor: "#DCFCE7",
+    backgroundColor: "#E0F2FE",
   },
   expenseBg: {
     backgroundColor: "#FEE2E2",
   },
+  itemCategory: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1E3A8A",
+  },
   itemDesc: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#111827",
+    color: "#4C1D95",
   },
   itemDate: {
     fontSize: 12,
-    color: "#6B7280",
+    color: "#7E22CE",
     marginTop: 3,
   },
   incomeText: {
-    color: "#16A34A",
+    color: "#10B981",
     fontWeight: "700",
     fontSize: 14,
   },
   expenseText: {
-    color: "#DC2626",
+    color: "#EF4444",
     fontWeight: "700",
     fontSize: 14,
   },
   listContent: {
     paddingBottom: 20,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#F9FAFB",
   },
   emptyContainer: {
     flex: 1,
@@ -216,8 +245,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   emptyText: {
-    color: "#9CA3AF",
-    fontSize: 14,
-    marginTop: 8,
+    color: "#7C3AED",
+    fontSize: 15,
+    marginTop: 10,
+    textAlign: "center",
   },
 });

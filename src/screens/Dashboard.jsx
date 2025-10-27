@@ -9,6 +9,7 @@ import {
   Dimensions,
   SafeAreaView,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -28,8 +29,9 @@ export default function Dashboard() {
   const [saldo, setSaldo] = useState(0);
   const [pemasukan, setPemasukan] = useState(0);
   const [pengeluaran, setPengeluaran] = useState(0);
+  const [showBalance, setShowBalance] = useState(true);
 
-  const API_URL = "http://10.1.5.173:8080/api/transaksi-keuangan/rekap";
+  const API_URL = "http://10.1.5.173:8080/api/transaksi-keuangan/pengguna";
 
   useEffect(() => {
     fetchDashboardData();
@@ -38,17 +40,39 @@ export default function Dashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const idPengguna = 1; // nanti ganti sesuai user login
-      const response = await axios.get(`${API_URL}/${idPengguna}`);
+      const idPengguna = 1;
 
-      // Pastikan backend kirim data seperti:
-      // { totalSaldo: 800000, totalPemasukan: 1200000, totalPengeluaran: 400000 }
-      const data = response.data;
-      setSaldo(data.totalSaldo);
-      setPemasukan(data.totalPemasukan);
-      setPengeluaran(data.totalPengeluaran);
+      const response = await axios.get(
+        `${API_URL}/${idPengguna}/laporan/rekap`
+      );
+      console.log("📦 Data dari backend:", response.data);
+
+      if (!response.data || response.data.length === 0) {
+        Alert.alert("Info", "Belum ada data rekap untuk pengguna ini.");
+        setSaldo(0);
+        setPemasukan(0);
+        setPengeluaran(0);
+        return;
+      }
+
+      const data = response.data[0];
+      const totalPemasukan = data.totalPemasukan || 0;
+      const totalPengeluaran = data.totalPengeluaran || 0;
+      const totalSaldo = totalPemasukan - totalPengeluaran;
+
+      setPemasukan(totalPemasukan);
+      setPengeluaran(totalPengeluaran);
+      setSaldo(totalSaldo);
     } catch (error) {
-      console.error("Gagal memuat data dashboard:", error);
+      console.error("❌ Gagal memuat data dashboard:", error);
+      Alert.alert(
+        "Error",
+        `Gagal memuat data: ${
+          error.response?.status === 404
+            ? "Data tidak ditemukan (404)"
+            : error.message
+        }`
+      );
     } finally {
       setLoading(false);
     }
@@ -59,16 +83,16 @@ export default function Dashboard() {
     return "Rp " + value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   };
 
-  const data = {
+  const chartData = {
     labels: ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun"],
     datasets: [
       {
         data: [500000, 700000, 600000, 900000, 800000, 1000000],
-        color: () => "#7C3AED",
+        color: () => "#2563EB",
       },
       {
         data: [400000, 300000, 500000, 400000, 600000, 700000],
-        color: () => "#9333EA",
+        color: () => "#3B82F6",
       },
     ],
     legend: ["Pemasukan", "Pengeluaran"],
@@ -76,12 +100,12 @@ export default function Dashboard() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#6D28D9" barStyle="light-content" />
+      <StatusBar backgroundColor="#2563EB" barStyle="light-content" />
 
       {/* HEADER */}
       <View style={styles.header}>
         <LinearGradient
-          colors={["#8B5CF6", "#A78BFA"]}
+          colors={["#3B82F6", "#1E3A8A"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.balanceCard}
@@ -92,15 +116,25 @@ export default function Dashboard() {
             <>
               <View style={styles.balanceTop}>
                 <Text style={styles.balanceLabel}>Total Saldo</Text>
-                <Ionicons name="eye-outline" size={20} color="#fff" />
+                <TouchableOpacity onPress={() => setShowBalance(!showBalance)}>
+                  <Ionicons
+                    name={showBalance ? "eye-outline" : "eye-off-outline"}
+                    size={22}
+                    color="#fff"
+                  />
+                </TouchableOpacity>
               </View>
 
-              <Text style={styles.balanceAmount}>{formatRupiah(saldo)}</Text>
+              <Text style={styles.balanceAmount}>
+                {showBalance ? formatRupiah(saldo) : "*******"}
+              </Text>
 
               <View style={styles.balanceBottom}>
                 <View style={styles.balanceInfo}>
                   <Text style={styles.balanceSubLabel}>Pemasukan</Text>
-                  <Text style={styles.income}>+{formatRupiah(pemasukan)}</Text>
+                  <Text style={styles.income}>
+                    {showBalance ? `+${formatRupiah(pemasukan)}` : "*******"}
+                  </Text>
                 </View>
 
                 <View style={styles.divider} />
@@ -108,7 +142,7 @@ export default function Dashboard() {
                 <View style={styles.balanceInfo}>
                   <Text style={styles.balanceSubLabel}>Pengeluaran</Text>
                   <Text style={styles.expense}>
-                    -{formatRupiah(pengeluaran)}
+                    {showBalance ? `-${formatRupiah(pengeluaran)}` : "*******"}
                   </Text>
                 </View>
               </View>
@@ -130,7 +164,7 @@ export default function Dashboard() {
             style={styles.menuItem}
             onPress={() => navigation.navigate("TambahTransaksi")}
           >
-            <Ionicons name="add-circle" size={30} color="#6D28D9" />
+            <Ionicons name="add-circle" size={30} color="#2563EB" />
             <Text style={styles.menuText}>Tambah</Text>
           </TouchableOpacity>
 
@@ -138,7 +172,7 @@ export default function Dashboard() {
             style={styles.menuItem}
             onPress={() => navigation.navigate("TabunganScreen")}
           >
-            <MaterialIcons name="savings" size={30} color="#F59E0B" />
+            <MaterialIcons name="savings" size={30} color="#0284C7" />
             <Text style={styles.menuText}>Tabungan</Text>
           </TouchableOpacity>
 
@@ -146,7 +180,7 @@ export default function Dashboard() {
             style={styles.menuItem}
             onPress={() => navigation.navigate("TambahTagihanScreen")}
           >
-            <Ionicons name="card" size={30} color="#EF4444" />
+            <Ionicons name="card" size={30} color="#0EA5E9" />
             <Text style={styles.menuText}>+ Tagihan</Text>
           </TouchableOpacity>
         </View>
@@ -198,29 +232,34 @@ export default function Dashboard() {
           <Text style={styles.chartTitle}>
             Grafik Keuangan {selectedMonth} {selectedYear}
           </Text>
-          <LineChart
-            data={data}
-            width={width - 40}
-            height={220}
-            chartConfig={{
-              backgroundColor: "#fff",
-              backgroundGradientFrom: "#fff",
-              backgroundGradientTo: "#fff",
-              decimalPlaces: 0,
-              color: (opacity = 1) => `rgba(109, 40, 217, ${opacity})`,
-              labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
-              propsForDots: { r: "4", strokeWidth: "1", stroke: "#6D28D9" },
-            }}
-            bezier
-            style={styles.chartStyle}
-          />
+
+          {chartData && chartData.datasets ? (
+            <LineChart
+              data={chartData}
+              width={width - 40}
+              height={220}
+              chartConfig={{
+                backgroundColor: "#fff",
+                backgroundGradientFrom: "#fff",
+                backgroundGradientTo: "#fff",
+                decimalPlaces: 0,
+                color: (opacity = 1) => `rgba(37, 99, 235, ${opacity})`,
+                labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+                propsForDots: { r: "4", strokeWidth: "1", stroke: "#2563EB" },
+              }}
+              bezier
+              style={styles.chartStyle}
+            />
+          ) : (
+            <Text style={{ color: "#9CA3AF" }}>Belum ada data grafik</Text>
+          )}
         </View>
       </ScrollView>
 
       {/* BOTTOM NAVIGATION */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={[styles.navItem, styles.active]}>
-          <Ionicons name="home" size={26} color="#6D28D9" />
+          <Ionicons name="home" size={26} color="#2563EB" />
           <Text style={[styles.navText, styles.activeText]}>Home</Text>
         </TouchableOpacity>
 
@@ -230,6 +269,13 @@ export default function Dashboard() {
         >
           <Ionicons name="time" size={26} color="#9CA3AF" />
           <Text style={styles.navText}>Riwayat</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("LihatTabunganScreen")}
+        >
+          <MaterialIcons name="savings" size={26} color="#64748B" />
+          <Text style={styles.navText}>Tabungan</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -252,7 +298,7 @@ export default function Dashboard() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F9FAFB" },
   header: {
-    backgroundColor: "#6D28D9",
+    backgroundColor: "#f6f6f6ff",
     paddingHorizontal: 15,
     paddingTop: 40,
     paddingBottom: 60,
@@ -272,7 +318,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 10,
   },
-  balanceLabel: { color: "#F3E8FF", fontSize: 14 },
+  balanceLabel: { color: "#DBEAFE", fontSize: 14 },
   balanceAmount: {
     color: "white",
     fontSize: 30,
@@ -286,7 +332,7 @@ const styles = StyleSheet.create({
   },
   balanceInfo: { alignItems: "center", flex: 1 },
   divider: { width: 1, backgroundColor: "rgba(255,255,255,0.4)", height: 30 },
-  balanceSubLabel: { color: "#EDE9FE", fontSize: 13 },
+  balanceSubLabel: { color: "#EFF6FF", fontSize: 13 },
   income: { color: "#BBF7D0", fontSize: 15, fontWeight: "600" },
   expense: { color: "#FCA5A5", fontSize: 15, fontWeight: "600" },
   scrollView: { paddingHorizontal: 15 },
@@ -335,5 +381,5 @@ const styles = StyleSheet.create({
   },
   navItem: { flex: 1, alignItems: "center" },
   navText: { fontSize: 12, color: "#9CA3AF", marginTop: 2 },
-  activeText: { color: "#6D28D9", fontWeight: "600" },
+  activeText: { color: "#2563EB", fontWeight: "600" },
 });
