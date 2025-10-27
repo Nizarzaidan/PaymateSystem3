@@ -20,23 +20,43 @@ export default function TambahTransaksiScreen({ navigation }) {
   const idPengguna = 1;
   const idAkun = 1;
 
+  // Pastikan mapping ID sesuai dengan database
   const kategoriList = {
     pengeluaran: [
-      { id_kategori: 3, nama_kategori: "Fashion" },
-      { id_kategori: 4, nama_kategori: "Pendidikan" },
-      { id_kategori: 5, nama_kategori: "Pulsa" },
-      { id_kategori: 6, nama_kategori: "Air" },
-      { id_kategori: 7, nama_kategori: "Listrik" },
-      { id_kategori: 8, nama_kategori: "Pajak" },
-      { id_kategori: 10, nama_kategori: "Makanan" },
-      { id_kategori: 11, nama_kategori: "Transportasi" },
-      { id_kategori: 12, nama_kategori: "Belanja" },
+      { id: 1, nama: "Makanan" },
+      { id: 2, nama: "Transportasi" },
+      { id: 3, nama: "Belanja" },
+      { id: 4, nama: "Fashion" },
+      { id: 5, nama: "Pendidikan" },
+      { id: 6, nama: "Pulsa" },
+      { id: 7, nama: "Air" },
+      { id: 8, nama: "Listrik" },
+      { id: 9, nama: "Pajak" },
     ],
     pemasukan: [
-      { id_kategori: 1, nama_kategori: "Deposit" },
-      { id_kategori: 2, nama_kategori: "Investasi" },
-      { id_kategori: 9, nama_kategori: "Gaji" },
+      { id: 10, nama: "Gaji" },
+      { id: 11, nama: "Investasi" },
+      { id: 12, nama: "Deposit" },
     ],
+  };
+
+  // Fungsi untuk format nominal dengan separator
+  const formatNominal = (value) => {
+    const numericValue = value.replace(/[^\d]/g, "");
+    if (numericValue) {
+      return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+    return "";
+  };
+
+  // Fungsi untuk konversi dari format display ke angka murni
+  const parseNominal = (formattedValue) => {
+    return formattedValue.replace(/\./g, "");
+  };
+
+  const handleNominalChange = (text) => {
+    const formatted = formatNominal(text);
+    setNominal(formatted);
   };
 
   // ✅ Simpan transaksi
@@ -46,19 +66,24 @@ export default function TambahTransaksiScreen({ navigation }) {
       return;
     }
 
+    // Konversi nominal dari format display ke angka murni
+    const nominalNumber = parseNominal(nominal);
+
     const data = {
       pengguna: { idPengguna },
       akun: { idAkun },
       tipeTransaksi: tipe,
-      kategori: { idKategori: kategori.id_kategori }, // ✅ Kirim ID kategori (FK)
-      nominal: parseFloat(nominal.replace(/\./g, "")),
+      kategori: { idKategori: kategori.id }, // Gunakan ID dari objek kategori
+      nominal: parseFloat(nominalNumber),
       tanggalTransaksi: new Date().toISOString(),
       catatan,
     };
 
+    console.log("📤 Data yang dikirim:", data);
+
     try {
       const res = await axios.post(
-        "http://10.1.5.173:8080/api/transaksi-keuangan",
+        "http://10.66.58.196:8080/api/transaksi-keuangan",
         data
       );
       Alert.alert("Berhasil", "Transaksi berhasil disimpan!");
@@ -66,13 +91,14 @@ export default function TambahTransaksiScreen({ navigation }) {
       setCatatan("");
       setKategori(null);
     } catch (err) {
-      console.error("Terjadi kesalahan:", err.response?.data || err.message);
-      Alert.alert("Gagal", "Terjadi kesalahan saat menyimpan transaksi");
+      console.error("❌ Error:", err.response?.data || err.message);
+      Alert.alert("Gagal", "Terjadi kesalahan saat menyimpan transaksi: " + 
+        (err.response?.data?.message || err.message));
     }
   };
 
-  const getIconName = (item) => {
-    switch (item.nama_kategori) {
+  const getIconName = (namaKategori) => {
+    switch (namaKategori) {
       case "Makanan":
         return "food";
       case "Transportasi":
@@ -102,111 +128,110 @@ export default function TambahTransaksiScreen({ navigation }) {
     }
   };
 
+  // Reset kategori saat tipe transaksi berubah
+  const handleTipeChange = (newTipe) => {
+    setTipe(newTipe);
+    setKategori(null);
+  };
+
   return (
-    <LinearGradient
-      colors={["#3B82F6", "#1E3A8A"]}
-      style={styles.gradientContainer}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-    >
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.switchContainer}>
-          <TouchableOpacity
+    <ScrollView style={styles.container}>
+      <View style={styles.switchContainer}>
+        <TouchableOpacity
+          style={[
+            styles.switchButton,
+            tipe === "pemasukan" && styles.activeIncome,
+          ]}
+          onPress={() => handleTipeChange("pemasukan")}
+        >
+          <Text
             style={[
-              styles.switchButton,
-              tipe === "pemasukan" && styles.activeIncome,
+              styles.switchText,
+              tipe === "pemasukan" && styles.activeText,
             ]}
-            onPress={() => setTipe("pemasukan")}
           >
+            Pemasukan
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.switchButton,
+            tipe === "pengeluaran" && styles.activeExpense,
+          ]}
+          onPress={() => handleTipeChange("pengeluaran")}
+        >
+          <Text
+            style={[
+              styles.switchText,
+              tipe === "pengeluaran" && styles.activeText,
+            ]}
+          >
+            Pengeluaran
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.kategoriContainer}>
+        {kategoriList[tipe].map((item) => (
+          <TouchableOpacity
+            key={item.id}
+            style={[
+              styles.kategoriButton,
+              kategori?.id === item.id && styles.kategoriButtonActive,
+            ]}
+            onPress={() => setKategori(item)}
+          >
+            <MaterialCommunityIcons
+              name={getIconName(item.nama)}
+              size={24}
+              color={kategori?.id === item.id ? "#fff" : "#2691B5"}
+            />
             <Text
               style={[
-                styles.switchText,
-                tipe === "pemasukan" && styles.activeText,
+                styles.kategoriText,
+                kategori?.id === item.id && { color: "#fff" },
               ]}
             >
-              Pemasukan
+              {item.nama}
             </Text>
           </TouchableOpacity>
+        ))}
+      </View>
 
-          <TouchableOpacity
-            style={[
-              styles.switchButton,
-              tipe === "pengeluaran" && styles.activeExpense,
-            ]}
-            onPress={() => setTipe("pengeluaran")}
-          >
-            <Text
-              style={[
-                styles.switchText,
-                tipe === "pengeluaran" && styles.activeText,
-              ]}
-            >
-              Pengeluaran
-            </Text>
-          </TouchableOpacity>
+      <View style={styles.formContainer}>
+        <Text style={styles.label}>Nominal (Rp)</Text>
+        <TextInput
+          keyboardType="numeric"
+          value={nominal}
+          onChangeText={handleNominalChange}
+          style={styles.input}
+          placeholder="0"
+        />
+        {nominal ? (
+          <Text style={styles.nominalPreview}>
+            Rp {nominal}
+          </Text>
+        ) : null}
+
+        <Text style={styles.label}>Catatan</Text>
+        <TextInput
+          value={catatan}
+          onChangeText={setCatatan}
+          style={styles.input}
+          placeholder="Opsional"
+        />
+
+        {/* Debug Info */}
+        <View style={styles.debugContainer}>
+          <Text style={styles.debugText}>
+            Kategori terpilih: {kategori ? `${kategori.nama} (ID: ${kategori.id})` : 'Belum dipilih'}
+          </Text>
+          <Text style={styles.debugText}>
+            Tipe: {tipe}
+          </Text>
         </View>
-
-        <View style={styles.kategoriContainer}>
-          {kategoriList[tipe].map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.kategoriButton,
-                kategori?.id_kategori === item.id_kategori &&
-                  styles.kategoriButtonActive,
-              ]}
-              onPress={() => setKategori(item)}
-            >
-              <MaterialCommunityIcons
-                name={getIconName(item)}
-                size={24}
-                color={
-                  kategori?.id_kategori === item.id_kategori
-                    ? "#fff"
-                    : "#ffffffff"
-                }
-              />
-              <Text
-                style={[
-                  styles.kategoriText,
-                  kategori?.id_kategori === item.id_kategori && {
-                    color: "#fff",
-                  },
-                ]}
-              >
-                {item.nama_kategori}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <View style={styles.formContainer}>
-          <Text style={styles.label}>Nominal (Rp)</Text>
-          <TextInput
-            keyboardType="numeric"
-            value={nominal}
-            onChangeText={(text) => {
-              const cleanValue = text.replace(/\D/g, "");
-              const formattedValue = cleanValue.replace(
-                /\B(?=(\d{3})+(?!\d))/g,
-                "."
-              );
-              setNominal(formattedValue);
-            }}
-            style={styles.input}
-            placeholder="0"
-            placeholderTextColor="#ddd"
-          />
-
-          <Text style={styles.label}>Catatan</Text>
-          <TextInput
-            value={catatan}
-            onChangeText={setCatatan}
-            style={styles.input}
-            placeholder="Opsional"
-            placeholderTextColor="#ddd"
-          />
-        </View>
+      </View>
 
         <TouchableOpacity style={styles.saveButton} onPress={simpanTransaksi}>
           <LinearGradient
@@ -236,9 +261,9 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
     marginHorizontal: 5,
   },
-  activeIncome: { backgroundColor: "#9333EA" },
-  activeExpense: { backgroundColor: "#7E22CE" },
-  switchText: { fontSize: 16, fontWeight: "600", color: "#fff" },
+  activeIncome: { backgroundColor: "#2691B5" },
+  activeExpense: { backgroundColor: "#ef4444" },
+  switchText: { fontSize: 16, fontWeight: "600", color: "#555" },
   activeText: { color: "#fff" },
   kategoriContainer: {
     flexDirection: "row",
@@ -247,7 +272,7 @@ const styles = StyleSheet.create({
   },
   kategoriButton: {
     borderWidth: 1,
-    borderColor: "#fff",
+    borderColor: "#2691B5",
     borderRadius: 16,
     padding: 10,
     margin: 5,
@@ -255,8 +280,8 @@ const styles = StyleSheet.create({
     flexBasis: "28%",
     backgroundColor: "rgba(255,255,255,0.15)",
   },
-  kategoriButtonActive: { backgroundColor: "#9333EA" },
-  kategoriText: { fontSize: 8, marginTop: 4, color: "#fff" },
+  kategoriButtonActive: { backgroundColor: "#2691B5" },
+  kategoriText: { fontSize: 13, marginTop: 4, color: "#2691B5" },
   formContainer: { marginVertical: 20 },
   label: { fontWeight: "bold", marginBottom: 5, color: "#fff" },
   input: {
@@ -264,10 +289,30 @@ const styles = StyleSheet.create({
     borderColor: "#E9D5FF",
     borderRadius: 10,
     padding: 10,
-    marginBottom: 15,
-    color: "#fff",
+    marginBottom: 5,
   },
-  saveButton: { borderRadius: 12, overflow: "hidden", marginTop: 10 },
-  saveButtonGradient: { paddingVertical: 14, alignItems: "center" },
+  nominalPreview: {
+    fontSize: 16,
+    color: "#2691B5",
+    marginBottom: 15,
+    fontWeight: "600",
+  },
+  saveButton: {
+    backgroundColor: "#2691B5",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    marginBottom: 30,
+  },
   saveButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+  debugContainer: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: "#f3f4f6",
+    borderRadius: 8,
+  },
+  debugText: {
+    fontSize: 12,
+    color: "#6b7280",
+  },
 });

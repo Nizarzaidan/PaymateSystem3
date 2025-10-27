@@ -18,7 +18,7 @@ export default function TambahTagihanScreen({ navigation }) {
   const [namaTagihan, setNamaTagihan] = useState("");
   const [nominalTagihan, setNominalTagihan] = useState("");
   const [tanggalPelunasan, setTanggalPelunasan] = useState("");
-  const [catatan, setCatatan] = useState(""); // ✅ field baru
+  const [catatan, setCatatan] = useState("");
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isBerkala, setIsBerkala] = useState(false);
 
@@ -38,22 +38,22 @@ export default function TambahTagihanScreen({ navigation }) {
 
     try {
       const tipePerulangan = isBerkala ? "bulanan" : "tidak_berulang";
-      const statusTagihan = "aktif";
+      const statusTagihan = "Belum Lunas"; // Default status
 
       // ✅ Tambahkan catatan ke payload
       const payload = {
         pengguna: { idPengguna: 1 },
         namaTagihan: namaTagihan.trim(),
-        nominal: parseInt(nominalTagihan.replace(/\./g, ""), 10), // kirim 200000
+        nominal: parseFloat(nominalTagihan.replace(/\./g, "")),
         tanggalJatuhTempo: tanggalPelunasan,
         tipePerulangan: tipePerulangan,
         terakhirDikirim: new Date().toISOString(),
         status: statusTagihan,
-        catatan: catatan.trim(), // ✅
+        catatan: catatan.trim(),
       };
 
       const response = await axios.post(
-        "http://10.1.5.173:8080/api/tagihan",
+        "http://10.66.58.196:8080/api/tagihan",
         payload,
         { headers: { "Content-Type": "application/json" } }
       );
@@ -63,7 +63,7 @@ export default function TambahTagihanScreen({ navigation }) {
         setNamaTagihan("");
         setNominalTagihan("");
         setTanggalPelunasan("");
-        setCatatan(""); // ✅ reset setelah simpan
+        setCatatan("");
         setIsBerkala(false);
         navigation.goBack();
       } else {
@@ -77,21 +77,13 @@ export default function TambahTagihanScreen({ navigation }) {
 
   return (
     <LinearGradient
-      colors={["#3B82F6", "#1E3A8A"]}
+      colors={["#ffffffff", "#ffffffff"]}
       style={styles.gradientBackground}
     >
       <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Tambah Tagihan</Text>
-          <View style={{ width: 24 }} />
-        </View>
 
         {/* Form Input */}
         <View style={styles.formBox}>
@@ -99,7 +91,7 @@ export default function TambahTagihanScreen({ navigation }) {
           <TextInput
             style={styles.input}
             placeholder="Masukkan Nama Tagihan"
-            placeholderTextColor="#C4B5FD"
+            placeholderTextColor="#93C5FD"
             value={namaTagihan}
             onChangeText={setNamaTagihan}
           />
@@ -108,31 +100,26 @@ export default function TambahTagihanScreen({ navigation }) {
           <TextInput
             style={styles.input}
             placeholder="Masukkan Nominal Tagihan"
-            placeholderTextColor="#C4B5FD"
+            placeholderTextColor="#93C5FD"
             value={nominalTagihan}
             onChangeText={(text) => {
-              // Hapus semua karakter non-angka
               const numericValue = text.replace(/\D/g, "");
-
-              // Format angka dengan titik pemisah ribuan
               const formattedValue = numericValue.replace(
                 /\B(?=(\d{3})+(?!\d))/g,
                 "."
               );
-
               setNominalTagihan(formattedValue);
             }}
             keyboardType="numeric"
           />
 
-          {/* ✅ Field Catatan */}
           <Text style={styles.label}>Catatan</Text>
           <TextInput
             value={catatan}
             onChangeText={setCatatan}
             style={[styles.input, { height: 80, textAlignVertical: "top" }]}
             placeholder="Tulis catatan tambahan (opsional)"
-            placeholderTextColor="#C4B5FD"
+            placeholderTextColor="#93C5FD"
             multiline
           />
 
@@ -143,7 +130,7 @@ export default function TambahTagihanScreen({ navigation }) {
           >
             <Text
               style={{
-                color: tanggalPelunasan ? "#4C1D95" : "#A78BFA",
+                color: tanggalPelunasan ? "#1E3A8A" : "#93C5FD",
                 flex: 1,
               }}
             >
@@ -151,7 +138,7 @@ export default function TambahTagihanScreen({ navigation }) {
                 ? tanggalPelunasan
                 : "Tentukan tanggal jatuh tempo"}
             </Text>
-            <Ionicons name="calendar-outline" size={20} color="#7C3AED" />
+            <Ionicons name="calendar-outline" size={20} color="#2691B5" />
           </TouchableOpacity>
 
           {showDatePicker && (
@@ -167,7 +154,7 @@ export default function TambahTagihanScreen({ navigation }) {
             <Switch
               value={isBerkala}
               onValueChange={setIsBerkala}
-              trackColor={{ false: "#C084FC", true: "#A855F7" }}
+              trackColor={{ false: "#C4B5FD", true: "#2691B5" }}
               thumbColor="#fff"
             />
             <Text style={styles.keteranganText}>Tagihan Berkala?</Text>
@@ -175,14 +162,12 @@ export default function TambahTagihanScreen({ navigation }) {
         </View>
 
         {/* Tombol Simpan */}
-        <LinearGradient
-          colors={["#A855F7", "#7E22CE"]}
-          style={styles.saveButton}
+        <TouchableOpacity 
+          style={styles.saveButton} 
+          onPress={handleSave}
         >
-          <TouchableOpacity onPress={handleSave} style={{ width: "100%" }}>
-            <Text style={styles.saveButtonText}>Simpan</Text>
-          </TouchableOpacity>
-        </LinearGradient>
+          <Text style={styles.saveButtonText}>Simpan Tagihan</Text>
+        </TouchableOpacity>
       </ScrollView>
     </LinearGradient>
   );
@@ -199,7 +184,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 15,
+    marginBottom: 25,
+    paddingHorizontal: 10,
   },
   headerTitle: {
     fontSize: 20,
@@ -207,61 +193,63 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   formBox: {
-    backgroundColor: "rgba(255,255,255,0.9)",
+    backgroundColor: "rgba(255,255,255,0.95)",
     borderRadius: 15,
-    padding: 15,
+    padding: 20,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.3)",
-    shadowColor: "#A855F7",
-    shadowOpacity: 0.4,
+    shadowColor: "#2691B5",
+    shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
   },
   label: {
-    color: "#4C1D95",
+    color: "#2691B5",
     fontWeight: "700",
-    marginTop: 10,
-    marginBottom: 5,
+    marginTop: 12,
+    marginBottom: 6,
+    fontSize: 14,
   },
   input: {
-    backgroundColor: "#EDE9FE",
+    backgroundColor: "#F0F9FF",
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#C4B5FD",
-    padding: 10,
+    borderColor: "#2691B5",
+    padding: 12,
     fontSize: 14,
-    color: "#4C1D95",
+    color: "#1E3A8A",
   },
   dateInput: {
-    backgroundColor: "#EDE9FE",
+    backgroundColor: "#F0F9FF",
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#C4B5FD",
-    padding: 10,
+    borderColor: "#2691B5",
+    padding: 12,
     flexDirection: "row",
     alignItems: "center",
   },
   keteranganRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 15,
+    marginTop: 20,
   },
   keteranganText: {
-    color: "#4C1D95",
+    color: "#2691B5",
     fontSize: 14,
-    marginLeft: 8,
-    fontWeight: "500",
+    marginLeft: 10,
+    fontWeight: "600",
   },
   saveButton: {
+    backgroundColor: "#2691B5",
     marginTop: 25,
-    borderRadius: 25,
-    paddingVertical: 14,
+    borderRadius: 12,
+    paddingVertical: 15,
     alignItems: "center",
-    shadowColor: "#6D28D9",
+    shadowColor: "#1A6A8F",
     shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 6,
-    marginBottom: 40,
+    marginBottom: 30,
   },
   saveButtonText: {
     color: "#fff",

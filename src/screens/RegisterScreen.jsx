@@ -37,12 +37,14 @@ export default function RegisterScreen() {
       },
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dx > 200) {
+          // kalau geser cukup jauh → masuk Dashboard
           Animated.timing(pan, {
             toValue: 260,
             duration: 150,
             useNativeDriver: true,
           }).start(() => navigation.navigate("Dashboard"));
         } else {
+          // kalau belum cukup → balik lagi
           Animated.spring(pan, {
             toValue: 0,
             useNativeDriver: true,
@@ -56,7 +58,7 @@ export default function RegisterScreen() {
 
   return (
     <LinearGradient
-      colors={["#3B82F6", "#1E3A8A"]} // 💙 gradasi biru utama
+      colors={["#6FB4CC", "#5F78BA"]} // Gradasi biru muda ke biru tua
       style={styles.container}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
@@ -70,14 +72,16 @@ export default function RegisterScreen() {
         />
       </Animated.View>
 
-      {/* SLIDE BUTTON */}
+      {/* SLIDE BUTTON DI BAWAH LAYAR */}
       <View style={[styles.sliderContainer, { width: trackWidth }]}>
         <LinearGradient
-          colors={["#60A5FA", "#2563EB"]} // 💙 gradasi biru untuk track slider
+          colors={["#5AA5C2", "#4F69B0"]} // Gradasi track yang lebih gelap
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.track}
         >
+          <Text style={styles.sliderText}>Geser untuk melanjutkan</Text>
+          
           <Animated.View
             {...panResponder.panHandlers}
             style={[
@@ -106,6 +110,7 @@ const styles = StyleSheet.create({
     height: 220,
     marginBottom: 80,
   },
+  // ⬇️ posisi tombol geser di bawah layar
   sliderContainer: {
     position: "absolute",
     bottom: 60,
@@ -121,15 +126,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 35,
   },
+  sliderText: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 16,
+    fontWeight: "500",
+  },
   thumb: {
     position: "absolute",
     left: 0,
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: "#1D4ED8", // biru tua untuk tombol geser
+    backgroundColor: "#3A5A9A", // Warna thumb yang lebih gelap
     justifyContent: "center",
     alignItems: "center",
     elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
 });

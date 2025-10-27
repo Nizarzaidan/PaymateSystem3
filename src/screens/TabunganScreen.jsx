@@ -14,34 +14,30 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import axios from "axios";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function TabunganScreen({ navigation }) {
   const [selectedPlan, setSelectedPlan] = useState("harian");
   const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-
+  
   // State untuk form
   const [formData, setFormData] = useState({
     namaTarget: "",
     targetNominal: "",
     nominalPengisian: "",
-    tanggalMulai: new Date().toISOString().split("T")[0], // Default hari ini
+    tanggalMulai: new Date().toISOString().split('T')[0], // Default hari ini
     tanggalSelesai: "",
     catatan: "",
   });
 
   // Fungsi untuk memilih gambar
   const pickImage = async () => {
-    const permissionResult =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (permissionResult.granted === false) {
-      Alert.alert(
-        "Izin Ditolak",
-        "Izinkan aplikasi mengakses galeri terlebih dahulu."
-      );
+      Alert.alert("Izin Ditolak", "Izinkan aplikasi mengakses galeri terlebih dahulu.");
       return;
     }
 
@@ -59,9 +55,9 @@ export default function TabunganScreen({ navigation }) {
 
   // Handle input change
   const handleInputChange = (field, value) => {
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
-      [field]: value,
+      [field]: value
     }));
   };
 
@@ -69,12 +65,12 @@ export default function TabunganScreen({ navigation }) {
   const formatCurrency = (value) => {
     // Hapus semua karakter non-digit
     const numericValue = value.replace(/\D/g, "");
-
+    
     // Format dengan titik sebagai pemisah ribuan
     if (numericValue) {
       return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     }
-
+    
     return "";
   };
 
@@ -89,7 +85,7 @@ export default function TabunganScreen({ navigation }) {
       Alert.alert("Error", "Nama tabungan harus diisi");
       return false;
     }
-
+    
     const targetNominal = parseCurrency(formData.targetNominal);
     if (!targetNominal || targetNominal <= 0) {
       Alert.alert("Error", "Target nominal harus diisi dan lebih dari 0");
@@ -117,10 +113,7 @@ export default function TabunganScreen({ navigation }) {
 
     // Validasi nominal pengisian tidak lebih besar dari target
     if (nominalPengisian > targetNominal) {
-      Alert.alert(
-        "Error",
-        "Nominal pengisian tidak boleh lebih besar dari target tabungan"
-      );
+      Alert.alert("Error", "Nominal pengisian tidak boleh lebih besar dari target tabungan");
       return false;
     }
 
@@ -134,7 +127,7 @@ export default function TabunganScreen({ navigation }) {
 
     const startDate = new Date(formData.tanggalMulai);
     const endDate = new Date(formData.tanggalSelesai);
-
+    
     if (endDate <= startDate) return;
 
     const timeDiff = endDate.getTime() - startDate.getTime();
@@ -159,9 +152,9 @@ export default function TabunganScreen({ navigation }) {
     // Set minimal nominal 1000
     calculatedNominal = Math.max(calculatedNominal, 1000);
 
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
-      nominalPengisian: formatCurrency(calculatedNominal.toString()),
+      nominalPengisian: formatCurrency(calculatedNominal.toString())
     }));
   };
 
@@ -191,45 +184,45 @@ export default function TabunganScreen({ navigation }) {
       console.log("Mengirim data:", payload);
 
       const response = await axios.post(
-        "http://10.1.5.173:8080/api/target-tabungan",
+        "http://10.66.58.196:8080/api/target-tabungan",
         payload,
-        {
-          headers: {
+        { 
+          headers: { 
             "Content-Type": "application/json",
-            Accept: "application/json",
+            "Accept": "application/json"
           },
-          timeout: 10000,
+          timeout: 10000
         }
       );
 
       console.log("Response:", response.data);
 
       if (response.data && response.data.code === 200) {
-        Alert.alert("Sukses", "Tabungan berhasil dibuat!", [
-          {
-            text: "OK",
-            onPress: () => navigation.goBack(),
-          },
-        ]);
-      } else {
         Alert.alert(
-          "Error",
-          response.data.message || "Gagal menyimpan tabungan"
+          "Sukses", 
+          "Tabungan berhasil dibuat!",
+          [
+            { 
+              text: "OK", 
+              onPress: () => navigation.goBack() 
+            }
+          ]
         );
+      } else {
+        Alert.alert("Error", response.data.message || "Gagal menyimpan tabungan");
       }
+
     } catch (error) {
       console.error("Error saving tabungan:", error);
-
+      
       if (error.response) {
         Alert.alert(
-          "Error",
-          `Gagal menyimpan tabungan: ${
-            error.response.data.message || error.response.status
-          }`
+          "Error", 
+          `Gagal menyimpan tabungan: ${error.response.data.message || error.response.status}`
         );
       } else if (error.request) {
         Alert.alert(
-          "Network Error",
+          "Network Error", 
           "Tidak dapat terhubung ke server. Periksa koneksi internet Anda."
         );
       } else {
@@ -272,14 +265,12 @@ export default function TabunganScreen({ navigation }) {
 
       // Add days of the month
       for (let day = 1; day <= daysInMonth; day++) {
-        const dateStr = `${currentMonth.getFullYear()}-${(
-          currentMonth.getMonth() + 1
-        )
+        const dateStr = `${currentMonth.getFullYear()}-${(currentMonth.getMonth() + 1)
           .toString()
           .padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
-
+        
         const isSelected = formData.tanggalSelesai === dateStr;
-        const isToday = dateStr === new Date().toISOString().split("T")[0];
+        const isToday = dateStr === new Date().toISOString().split('T')[0];
 
         days.push(
           <TouchableOpacity
@@ -290,7 +281,7 @@ export default function TabunganScreen({ navigation }) {
               isToday && styles.calendarDayToday,
             ]}
             onPress={() => {
-              handleInputChange("tanggalSelesai", dateStr);
+              handleInputChange('tanggalSelesai', dateStr);
               setShowDatePicker(false);
             }}
           >
@@ -311,46 +302,35 @@ export default function TabunganScreen({ navigation }) {
     };
 
     const goToPreviousMonth = () => {
-      setCurrentMonth(
-        new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1)
-      );
+      setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
     };
 
     const goToNextMonth = () => {
-      setCurrentMonth(
-        new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1)
-      );
+      setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
     };
 
     const monthNames = [
-      "Januari",
-      "Februari",
-      "Maret",
-      "April",
-      "Mei",
-      "Juni",
-      "Juli",
-      "Agustus",
-      "September",
-      "Oktober",
-      "November",
-      "Desember",
+      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+      "Juli", "Agustus", "September", "Oktober", "November", "Desember"
     ];
 
     return (
-      <Modal visible={showDatePicker} animationType="slide" transparent={true}>
+      <Modal
+        visible={showDatePicker}
+        animationType="slide"
+        transparent={true}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.calendarContainer}>
             <View style={styles.calendarHeader}>
               <TouchableOpacity onPress={goToPreviousMonth}>
                 <Ionicons name="chevron-back" size={24} color="#2691B5" />
               </TouchableOpacity>
-
+              
               <Text style={styles.calendarTitle}>
-                {monthNames[currentMonth.getMonth()]}{" "}
-                {currentMonth.getFullYear()}
+                {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
               </Text>
-
+              
               <TouchableOpacity onPress={goToNextMonth}>
                 <Ionicons name="chevron-forward" size={24} color="#2691B5" />
               </TouchableOpacity>
@@ -364,17 +344,19 @@ export default function TabunganScreen({ navigation }) {
               ))}
             </View>
 
-            <View style={styles.calendarDays}>{renderCalendar()}</View>
+            <View style={styles.calendarDays}>
+              {renderCalendar()}
+            </View>
 
             <View style={styles.calendarButtons}>
-              <TouchableOpacity
+              <TouchableOpacity 
                 style={[styles.calendarButton, styles.cancelButton]}
                 onPress={() => setShowDatePicker(false)}
               >
                 <Text style={styles.cancelButtonText}>BATAL</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity
+              
+              <TouchableOpacity 
                 style={[styles.calendarButton, styles.okButton]}
                 onPress={() => setShowDatePicker(false)}
               >
@@ -390,6 +372,7 @@ export default function TabunganScreen({ navigation }) {
   return (
     <View style={styles.container}>
       {/* Header */}
+      
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Upload Gambar */}
@@ -419,7 +402,7 @@ export default function TabunganScreen({ navigation }) {
             placeholder="Contoh: Tabungan Liburan"
             placeholderTextColor="#9CA3AF"
             value={formData.namaTarget}
-            onChangeText={(text) => handleInputChange("namaTarget", text)}
+            onChangeText={(text) => handleInputChange('namaTarget', text)}
           />
         </View>
 
@@ -433,9 +416,7 @@ export default function TabunganScreen({ navigation }) {
             placeholderTextColor="#9CA3AF"
             keyboardType="numeric"
             value={formData.targetNominal}
-            onChangeText={(text) =>
-              handleInputChange("targetNominal", formatCurrency(text))
-            }
+            onChangeText={(text) => handleInputChange('targetNominal', formatCurrency(text))}
           />
           <Text style={styles.currencyText}>Rp</Text>
         </View>
@@ -466,16 +447,13 @@ export default function TabunganScreen({ navigation }) {
 
         {/* Tanggal Selesai */}
         <Text style={styles.sectionTitle}>Tanggal Selesai</Text>
-        <TouchableOpacity
+        <TouchableOpacity 
           style={styles.inputWrapper}
           onPress={() => setShowDatePicker(true)}
         >
           <Ionicons name="calendar-outline" size={20} color="#64748B" />
           <TextInput
-            style={[
-              styles.input,
-              !formData.tanggalSelesai && styles.placeholderText,
-            ]}
+            style={[styles.input, !formData.tanggalSelesai && styles.placeholderText]}
             placeholder="Pilih tanggal selesai"
             placeholderTextColor="#9CA3AF"
             value={formData.tanggalSelesai}
@@ -490,8 +468,8 @@ export default function TabunganScreen({ navigation }) {
         <View style={styles.planContainer}>
           {[
             { key: "harian", label: "Harian" },
-            { key: "mingguan", label: "Mingguan" },
-            { key: "bulanan", label: "Bulanan" },
+            { key: "mingguan", label: "Mingguan" }, 
+            { key: "bulanan", label: "Bulanan" }
           ].map((plan) => (
             <TouchableOpacity
               key={plan.key}
@@ -523,22 +501,15 @@ export default function TabunganScreen({ navigation }) {
             placeholderTextColor="#9CA3AF"
             keyboardType="numeric"
             value={formData.nominalPengisian}
-            onChangeText={(text) =>
-              handleInputChange("nominalPengisian", formatCurrency(text))
-            }
+            onChangeText={(text) => handleInputChange('nominalPengisian', formatCurrency(text))}
           />
           <Text style={styles.currencyText}>Rp</Text>
         </View>
 
         <View style={styles.infoBox}>
-          <Ionicons
-            name="information-circle-outline"
-            size={16}
-            color="#2691B5"
-          />
+          <Ionicons name="information-circle-outline" size={16} color="#2691B5" />
           <Text style={styles.infoText}>
-            Nominal pengisian akan dihitung otomatis berdasarkan target,
-            tanggal, dan frekuensi yang dipilih
+            Nominal pengisian akan dihitung otomatis berdasarkan target, tanggal, dan frekuensi yang dipilih
           </Text>
         </View>
 
@@ -553,37 +524,35 @@ export default function TabunganScreen({ navigation }) {
             numberOfLines={3}
             textAlignVertical="top"
             value={formData.catatan}
-            onChangeText={(text) => handleInputChange("catatan", text)}
+            onChangeText={(text) => handleInputChange('catatan', text)}
           />
         </View>
 
+        
+
         {/* Info */}
         <View style={styles.infoBox}>
-          <Ionicons
-            name="information-circle-outline"
-            size={20}
-            color="#2691B5"
-          />
+          <Ionicons name="information-circle-outline" size={20} color="#2691B5" />
           <Text style={styles.infoText}>
-            Tabungan akan secara otomatis menampilkan progress menuju target
-            yang ditentukan.
+            Tabungan akan secara otomatis menampilkan progress menuju target yang ditentukan.
           </Text>
         </View>
       </ScrollView>
 
-      <TouchableOpacity
-        style={[styles.saveButton, loading && styles.saveButtonDisabled]}
-        onPress={saveTabungan}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
-          <Text style={styles.saveText}>Simpan</Text>
-        )}
-      </TouchableOpacity>
+       <TouchableOpacity 
+          style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+          onPress={saveTabungan}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.saveText}>Simpan</Text>
+          )}
+        </TouchableOpacity>
 
-      <View style={styles.header}></View>
+        <View style={styles.header}>
+      </View>
 
       <CalendarModal />
     </View>
@@ -619,7 +588,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#94A3B8",
   },
   saveText: {
-    color: "#fff",
+    color: "#fff", 
     fontWeight: "600",
     fontSize: 14,
   },
