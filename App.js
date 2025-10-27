@@ -54,11 +54,11 @@ export default function App() {
           options={{ title: "Buat Tabungan" }}
         />
         {/* ROUTE BARU */}
-        <Stack.Screen
+        {/* <Stack.Screen
           name="LihatTabunganScreen"
           component={LihatTabunganScreen}
           options={{ title: "Daftar Tabungan" }}
-        />
+        /> */}
 
         <Stack.Screen
           name="TambahTagihanScreen"

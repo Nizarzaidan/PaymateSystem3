@@ -18,6 +18,7 @@ import { LineChart } from "react-native-chart-kit";
 import { useNavigation, useIsFocused } from "@react-navigation/native";
 import { Calendar } from "react-native-calendars";
 import axios from "axios";
+import api from "../api/apiClient";
 
 const { width } = Dimensions.get("window");
 
@@ -35,8 +36,6 @@ export default function Dashboard() {
   const [chartData, setChartData] = useState(null);
   const [transaksiData, setTransaksiData] = useState([]);
 
-  const API_URL = "http://10.66.58.196:8080/api/transaksi-keuangan/pengguna";
-
   useEffect(() => {
     if (isFocused) {
       fetchDashboardData();
@@ -49,8 +48,8 @@ export default function Dashboard() {
       setLoading(true);
       const idPengguna = 1;
 
-      const response = await axios.get(
-        `${API_URL}/${idPengguna}/laporan/rekap`
+      const response = await api.get(
+        `/transaksi-keuangan/pengguna/${idPengguna}/laporan/rekap`
       );
       console.log("📦 Data dari backend:", response.data);
 
@@ -88,13 +87,17 @@ export default function Dashboard() {
   const fetchTransaksiForChart = async () => {
     try {
       const idPengguna = 1;
-      const response = await axios.get(
-        `${API_URL}/${idPengguna}`
+      const response = await api.get(
+        `/transaksi-keuangan/pengguna/${idPengguna}`
       );
-      
-      console.log("📊 Data transaksi untuk grafik:", response.data.length, "items");
+
+      console.log(
+        "📊 Data transaksi untuk grafik:",
+        response.data.length,
+        "items"
+      );
       setTransaksiData(response.data);
-      
+
       // Process data untuk grafik
       processChartData(response.data);
     } catch (error) {
@@ -106,20 +109,26 @@ export default function Dashboard() {
     // Filter transaksi berdasarkan bulan yang dipilih
     const selectedYear = selectedDate.getFullYear();
     const selectedMonth = selectedDate.getMonth();
-    
-    const filteredTransaksi = transaksi.filter(item => {
+
+    const filteredTransaksi = transaksi.filter((item) => {
       const transaksiDate = new Date(item.tanggalTransaksi);
-      return transaksiDate.getFullYear() === selectedYear && 
-             transaksiDate.getMonth() === selectedMonth;
+      return (
+        transaksiDate.getFullYear() === selectedYear &&
+        transaksiDate.getMonth() === selectedMonth
+      );
     });
 
     // Kelompokkan data per minggu dalam bulan tersebut
-    const weeklyData = groupDataByWeek(filteredTransaksi, selectedYear, selectedMonth);
-    
+    const weeklyData = groupDataByWeek(
+      filteredTransaksi,
+      selectedYear,
+      selectedMonth
+    );
+
     // Siapkan data untuk chart
-    const labels = weeklyData.map(week => `Minggu ${week.week}`);
-    const pemasukanData = weeklyData.map(week => week.pemasukan);
-    const pengeluaranData = weeklyData.map(week => week.pengeluaran);
+    const labels = weeklyData.map((week) => `Minggu ${week.week}`);
+    const pemasukanData = weeklyData.map((week) => week.pemasukan);
+    const pengeluaranData = weeklyData.map((week) => week.pengeluaran);
 
     const chartConfig = {
       labels: labels,
@@ -144,40 +153,40 @@ export default function Dashboard() {
   const groupDataByWeek = (transaksi, year, month) => {
     // Buat array untuk 4-5 minggu dalam bulan
     const weeks = [];
-    
+
     // Cari minggu pertama dalam bulan
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    
+
     let currentWeek = 1;
     let currentDate = new Date(firstDay);
-    
+
     // Inisialisasi data per minggu
     while (currentDate <= lastDay) {
       const weekStart = new Date(currentDate);
       const weekEnd = new Date(currentDate);
       weekEnd.setDate(weekEnd.getDate() + 6);
-      
+
       if (weekEnd > lastDay) {
         weekEnd.setTime(lastDay.getTime());
       }
-      
+
       weeks.push({
         week: currentWeek,
         startDate: new Date(weekStart),
         endDate: new Date(weekEnd),
         pemasukan: 0,
-        pengeluaran: 0
+        pengeluaran: 0,
       });
-      
+
       currentWeek++;
       currentDate.setDate(currentDate.getDate() + 7);
     }
 
     // Isi data transaksi ke dalam minggu yang sesuai
-    transaksi.forEach(transaksi => {
+    transaksi.forEach((transaksi) => {
       const transaksiDate = new Date(transaksi.tanggalTransaksi);
-      
+
       for (let week of weeks) {
         if (transaksiDate >= week.startDate && transaksiDate <= week.endDate) {
           if (transaksi.tipeTransaksi === "pemasukan") {
@@ -207,15 +216,28 @@ export default function Dashboard() {
 
   const formatDate = (date) => {
     const months = [
-      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-      "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+      "Januari",
+      "Februari",
+      "Maret",
+      "April",
+      "Mei",
+      "Juni",
+      "Juli",
+      "Agustus",
+      "September",
+      "Oktober",
+      "November",
+      "Desember",
     ];
     return `${months[date.getMonth()]} ${date.getFullYear()}`;
   };
 
   const getCurrentTime = () => {
     const now = new Date();
-    return now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    return now.toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const onDateSelect = (day) => {
@@ -275,10 +297,10 @@ export default function Dashboard() {
               <View style={styles.balanceTop}>
                 <Text style={styles.balanceLabel}>Total Saldo</Text>
                 <TouchableOpacity onPress={toggleBalanceVisibility}>
-                  <Ionicons 
-                    name={showBalance ? "eye-outline" : "eye-off-outline"} 
-                    size={20} 
-                    color="#fff" 
+                  <Ionicons
+                    name={showBalance ? "eye-outline" : "eye-off-outline"}
+                    size={20}
+                    color="#fff"
                   />
                 </TouchableOpacity>
               </View>
@@ -294,9 +316,9 @@ export default function Dashboard() {
                     {formatBalanceDisplay(pemasukan)}
                   </Text>
                 </View>
-                
+
                 <View style={styles.divider} />
-                
+
                 <View style={styles.incomeExpenseItem}>
                   <Text style={styles.incomeExpenseLabel}>Pengeluaran</Text>
                   <Text style={styles.expenseAmount}>
@@ -319,7 +341,7 @@ export default function Dashboard() {
             style={styles.menuItem}
             onPress={() => navigation.navigate("TambahTransaksi")}
           >
-            <View style={[styles.menuIcon, { backgroundColor: '#E0F2FE' }]}>
+            <View style={[styles.menuIcon, { backgroundColor: "#E0F2FE" }]}>
               <Ionicons name="add-circle" size={28} color="#0EA5E9" />
             </View>
             <Text style={styles.menuText}>Tambah Transaksi</Text>
@@ -329,7 +351,7 @@ export default function Dashboard() {
             style={styles.menuItem}
             onPress={() => navigation.navigate("TabunganScreen")}
           >
-            <View style={[styles.menuIcon, { backgroundColor: '#F0FDFA' }]}>
+            <View style={[styles.menuIcon, { backgroundColor: "#F0FDFA" }]}>
               <MaterialIcons name="savings" size={28} color="#14B8A6" />
             </View>
             <Text style={styles.menuText}>Tabungan</Text>
@@ -339,7 +361,7 @@ export default function Dashboard() {
             style={styles.menuItem}
             onPress={() => navigation.navigate("TambahTagihanScreen")}
           >
-             <View style={[styles.menuIcon, { backgroundColor: '#FEF3C7' }]}>
+            <View style={[styles.menuIcon, { backgroundColor: "#FEF3C7" }]}>
               <Ionicons name="receipt-outline" size={28} color="#F59E0B" />
             </View>
             <Text style={styles.menuText}>Tagihan</Text>
@@ -347,13 +369,15 @@ export default function Dashboard() {
         </View>
 
         {/* FILTER TANGGAL */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.dateFilter}
           onPress={() => setShowCalendar(true)}
         >
           <View style={styles.dateFilterLeft}>
             <Ionicons name="calendar" size={20} color="#5F78BA" />
-            <Text style={styles.dateFilterText}>{formatDate(selectedDate)}</Text>
+            <Text style={styles.dateFilterText}>
+              {formatDate(selectedDate)}
+            </Text>
           </View>
           <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
         </TouchableOpacity>
@@ -416,11 +440,15 @@ export default function Dashboard() {
           {/* LEGENDA */}
           <View style={styles.legendContainer}>
             <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: '#34D399' }]} />
+              <View
+                style={[styles.legendColor, { backgroundColor: "#34D399" }]}
+              />
               <Text style={styles.legendText}>Pemasukan</Text>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: '#EF4444' }]} />
+              <View
+                style={[styles.legendColor, { backgroundColor: "#EF4444" }]}
+              />
               <Text style={styles.legendText}>Pengeluaran</Text>
             </View>
           </View>
@@ -458,33 +486,33 @@ export default function Dashboard() {
                 <Ionicons name="close" size={24} color="#374151" />
               </TouchableOpacity>
             </View>
-            
+
             <Calendar
-              current={selectedDate.toISOString().split('T')[0]}
+              current={selectedDate.toISOString().split("T")[0]}
               onDayPress={onDateSelect}
               markedDates={{
-                [selectedDate.toISOString().split('T')[0]]: {
+                [selectedDate.toISOString().split("T")[0]]: {
                   selected: true,
-                  selectedColor: '#5F78BA',
+                  selectedColor: "#5F78BA",
                 },
               }}
               theme={{
-                selectedDayBackgroundColor: '#5F78BA',
-                todayTextColor: '#5F78BA',
-                arrowColor: '#5F78BA',
-                monthTextColor: '#1F2937',
-                textMonthFontWeight: 'bold',
+                selectedDayBackgroundColor: "#5F78BA",
+                todayTextColor: "#5F78BA",
+                arrowColor: "#5F78BA",
+                monthTextColor: "#1F2937",
+                textMonthFontWeight: "bold",
               }}
             />
 
             <View style={styles.calendarButtons}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.cancelButton}
                 onPress={() => setShowCalendar(false)}
               >
                 <Text style={styles.cancelButtonText}>BATAL</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.okButton}
                 onPress={() => setShowCalendar(false)}
               >
@@ -581,8 +609,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
-  balanceLabel: { 
-    color: "rgba(255,255,255,0.85)", 
+  balanceLabel: {
+    color: "rgba(255,255,255,0.85)",
     fontSize: 13,
     fontWeight: "500",
   },
@@ -594,15 +622,15 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   incomeExpenseContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingTop: 15,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.2)',
+    borderTopColor: "rgba(255,255,255,0.2)",
   },
   incomeExpenseItem: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
   },
   incomeExpenseLabel: {
@@ -623,10 +651,10 @@ const styles = StyleSheet.create({
   divider: {
     width: 1,
     height: 40,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: "rgba(255,255,255,0.2)",
   },
-  scrollView: { 
-    paddingHorizontal: 20, 
+  scrollView: {
+    paddingHorizontal: 20,
     flex: 1,
     marginTop: 20,
   },
@@ -644,7 +672,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 4,
   },
-  menuItem: { 
+  menuItem: {
     alignItems: "center",
     flex: 1,
   },
@@ -656,17 +684,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
-  menuText: { 
-    fontSize: 11, 
-    color: "#374151", 
+  menuText: {
+    fontSize: 11,
+    color: "#374151",
     fontWeight: "500",
     textAlign: "center",
   },
   dateFilter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: 'white',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 12,
     marginBottom: 15,
@@ -677,17 +705,17 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   dateFilterLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   dateFilterText: {
     marginLeft: 8,
     fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: "#1F2937",
   },
-  chartContainer: { 
-    alignItems: "center", 
+  chartContainer: {
+    alignItems: "center",
     marginBottom: 100,
     backgroundColor: "white",
     borderRadius: 16,
@@ -704,19 +732,19 @@ const styles = StyleSheet.create({
     color: "#1F2937",
     marginBottom: 20,
   },
-  chartStyle: { 
+  chartStyle: {
     borderRadius: 12,
     marginVertical: 8,
   },
   legendContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginTop: 15,
     gap: 20,
   },
   legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   legendColor: {
     width: 12,
@@ -726,67 +754,67 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '500',
+    color: "#6B7280",
+    fontWeight: "500",
   },
   statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginTop: 20,
     paddingTop: 15,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    width: '100%',
+    borderTopColor: "#E5E7EB",
+    width: "100%",
   },
   statItem: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
   },
   statLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: "#6B7280",
     marginBottom: 4,
   },
   statValue: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   incomeValue: {
-    color: '#34D399',
+    color: "#34D399",
   },
   expenseValue: {
-    color: '#EF4444',
+    color: "#EF4444",
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   calendarContainer: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 16,
-    width: '100%',
+    width: "100%",
     maxWidth: 400,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   calendarHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: "#E5E7EB",
   },
   calendarTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontWeight: "700",
+    color: "#1F2937",
   },
   calendarButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+    flexDirection: "row",
+    justifyContent: "flex-end",
     padding: 20,
     gap: 15,
   },
@@ -795,18 +823,18 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   cancelButtonText: {
-    color: '#DC2626',
+    color: "#DC2626",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   okButton: {
     paddingHorizontal: 20,
     paddingVertical: 10,
   },
   okButtonText: {
-    color: '#0EA5E9',
+    color: "#0EA5E9",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   bottomNav: {
     flexDirection: "row",
@@ -825,19 +853,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 5,
   },
-  navItem: { 
-    flex: 1, 
-    alignItems: "center",
-    paddingVertical: 5,
-  },
-  navText: { 
-    fontSize: 11, 
-    color: "#9CA3AF", 
-    marginTop: 4,
-    fontWeight: "500",
-  },
-  activeText: { 
-    color: "#5F78BA", 
-    fontWeight: "700" 
-  },
+  navItem: { flex: 1, alignItems: "center" },
+  navText: { fontSize: 12, color: "#9CA3AF", marginTop: 2 },
+  activeText: { color: "#6D28D9", fontWeight: "600" },
 });

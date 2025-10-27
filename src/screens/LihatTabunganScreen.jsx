@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import axios from "axios";
+import api from "../api/apiClient";
 
 export default function LihatTabunganScreen({ navigation }) {
   const [tabunganList, setTabunganList] = useState([]);
@@ -28,16 +29,17 @@ export default function LihatTabunganScreen({ navigation }) {
   const fetchTabungan = async () => {
     try {
       const idPengguna = 1; // Ganti dengan ID user yang login dari AsyncStorage
-      const response = await axios.get(
-        `http://10.66.58.196:8080/api/target-tabungan/pengguna/${idPengguna}`
-      );
+      const response = await api.get(`/target-tabungan/pengguna/${idPengguna}`);
 
       if (response.data) {
         setTabunganList(response.data);
       }
     } catch (error) {
       console.error("Error fetching tabungan:", error);
-      Alert.alert("Error", "Gagal memuat data tabungan. Periksa koneksi internet dan pastikan server aktif.");
+      Alert.alert(
+        "Error",
+        "Gagal memuat data tabungan. Periksa koneksi internet dan pastikan server aktif."
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -111,15 +113,15 @@ export default function LihatTabunganScreen({ navigation }) {
     }
 
     const nominal = parseFloat(nominalInput.replace(/\./g, ""));
-    
+
     if (isNaN(nominal) || nominal <= 0) {
       Alert.alert("Error", "Nominal harus lebih dari 0");
       return;
     }
 
     try {
-      const response = await axios.put(
-        `http://10.66.58.196:8080/api/target-tabungan/${selectedTabungan.idTarget}/tambah?nominal=${nominal}`
+      const response = await api.put(
+        `/target-tabungan/${selectedTabungan.idTarget}/tambah?nominal=${nominal}`
       );
 
       if (response.data && response.data.code === 200) {
@@ -128,7 +130,7 @@ export default function LihatTabunganScreen({ navigation }) {
         const isCompleted = newNominal >= selectedTabungan.targetNominal;
 
         setModalVisible(false);
-        
+
         if (isCompleted) {
           Alert.alert(
             "🎉 Selamat!",
@@ -143,7 +145,7 @@ export default function LihatTabunganScreen({ navigation }) {
     } catch (error) {
       console.error("Error tambah nominal:", error);
       Alert.alert(
-        "Error", 
+        "Error",
         "Gagal menambah nominal. Periksa:\n• Koneksi internet\n• Server aktif\n• IP address server"
       );
     }
@@ -151,37 +153,34 @@ export default function LihatTabunganScreen({ navigation }) {
 
   // Hapus tabungan
   const handleDelete = (id, nama) => {
-    Alert.alert(
-      "Hapus Tabungan",
-      `Yakin ingin menghapus "${nama}"?`,
-      [
-        { text: "Batal", style: "cancel" },
-        {
-          text: "Hapus",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const response = await axios.delete(
-                `http://10.66.58.196:8080/api/target-tabungan/${id}`
-              );
-              
-              if (response.data && response.data.code === 200) {
-                Alert.alert("Sukses", "Tabungan berhasil dihapus");
-                fetchTabungan();
-              }
-            } catch (error) {
-              console.error("Error delete:", error);
-              Alert.alert("Error", "Gagal menghapus tabungan");
+    Alert.alert("Hapus Tabungan", `Yakin ingin menghapus "${nama}"?`, [
+      { text: "Batal", style: "cancel" },
+      {
+        text: "Hapus",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            const response = await api.delete(`/target-tabungan/${id}`);
+
+            if (response.data && response.data.code === 200) {
+              Alert.alert("Sukses", "Tabungan berhasil dihapus");
+              fetchTabungan();
             }
-          },
+          } catch (error) {
+            console.error("Error delete:", error);
+            Alert.alert("Error", "Gagal menghapus tabungan");
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   // Render item tabungan
   const renderTabunganItem = ({ item }) => {
-    const progress = calculateProgress(item.nominalSekarang, item.targetNominal);
+    const progress = calculateProgress(
+      item.nominalSekarang,
+      item.targetNominal
+    );
     const isCompleted = item.status === "selesai";
     const sisaNominal = item.targetNominal - item.nominalSekarang;
 
@@ -191,16 +190,16 @@ export default function LihatTabunganScreen({ navigation }) {
         <View style={styles.cardHeaderPattern}>
           <View style={styles.cardHeader}>
             <View style={styles.cardTitleRow}>
-              <MaterialIcons 
-                name="savings" 
-                size={28} 
-                color={isCompleted ? "#10B981" : "#FFFFFF"} 
+              <MaterialIcons
+                name="savings"
+                size={28}
+                color={isCompleted ? "#10B981" : "#FFFFFF"}
               />
               <Text style={styles.cardTitle} numberOfLines={1}>
                 {item.namaTarget}
               </Text>
             </View>
-            
+
             {isCompleted && (
               <View style={styles.completedBadge}>
                 <Ionicons name="checkmark-circle" size={16} color="#10B981" />
@@ -212,8 +211,8 @@ export default function LihatTabunganScreen({ navigation }) {
 
         {/* Foto Tabungan (jika ada) */}
         {item.fotoTabungan && (
-          <Image 
-            source={{ uri: item.fotoTabungan }} 
+          <Image
+            source={{ uri: item.fotoTabungan }}
             style={styles.tabunganImage}
             resizeMode="cover"
           />
@@ -223,20 +222,22 @@ export default function LihatTabunganScreen({ navigation }) {
         <View style={styles.progressSection}>
           <View style={styles.progressHeader}>
             <Text style={styles.progressLabel}>Progress Menabung</Text>
-            <Text style={[
-              styles.progressPercentage,
-              isCompleted && styles.progressPercentageCompleted
-            ]}>
+            <Text
+              style={[
+                styles.progressPercentage,
+                isCompleted && styles.progressPercentageCompleted,
+              ]}
+            >
               {progress.toFixed(1)}%
             </Text>
           </View>
           <View style={styles.progressBarContainer}>
-            <View 
+            <View
               style={[
                 styles.progressBar,
                 { width: `${progress}%` },
-                isCompleted && styles.progressBarCompleted
-              ]} 
+                isCompleted && styles.progressBarCompleted,
+              ]}
             />
           </View>
         </View>
@@ -249,9 +250,9 @@ export default function LihatTabunganScreen({ navigation }) {
               {formatCurrency(item.nominalSekarang)}
             </Text>
           </View>
-          
+
           <View style={styles.divider} />
-          
+
           <View style={styles.nominalBox}>
             <Text style={styles.labelText}>Target</Text>
             <Text style={styles.nominalText}>
@@ -265,7 +266,10 @@ export default function LihatTabunganScreen({ navigation }) {
           <View style={styles.sisaBox}>
             <Ionicons name="trending-up-outline" size={18} color="#F59E0B" />
             <Text style={styles.sisaText}>
-              Sisa: <Text style={styles.sisaNominal}>{formatCurrency(sisaNominal)}</Text>
+              Sisa:{" "}
+              <Text style={styles.sisaNominal}>
+                {formatCurrency(sisaNominal)}
+              </Text>
             </Text>
           </View>
         )}
@@ -275,14 +279,16 @@ export default function LihatTabunganScreen({ navigation }) {
           <View style={styles.detailRow}>
             <Ionicons name="calendar-outline" size={16} color="#2691B5" />
             <Text style={styles.detailText}>
-              {formatDate(item.tanggalMulai)} - {formatDate(item.tanggalSelesai)}
+              {formatDate(item.tanggalMulai)} -{" "}
+              {formatDate(item.tanggalSelesai)}
             </Text>
           </View>
-          
+
           <View style={styles.detailRow}>
             <Ionicons name="repeat-outline" size={16} color="#2691B5" />
             <Text style={styles.detailText}>
-              {formatCurrency(item.nominalPengisian)} / {item.frekuensiPengisian}
+              {formatCurrency(item.nominalPengisian)} /{" "}
+              {item.frekuensiPengisian}
             </Text>
           </View>
         </View>
@@ -308,7 +314,7 @@ export default function LihatTabunganScreen({ navigation }) {
               <Text style={styles.actionBtnText}>Tambah Saldo 💰</Text>
             </TouchableOpacity>
           )}
-          
+
           <TouchableOpacity
             style={[styles.deleteBtn, !isCompleted && styles.deleteBtnSmall]}
             onPress={() => handleDelete(item.idTarget, item.namaTarget)}
@@ -370,7 +376,8 @@ export default function LihatTabunganScreen({ navigation }) {
               filter === "selesai" && styles.filterTextActive,
             ]}
           >
-            Selesai ({tabunganList.filter(t => t.status === "selesai").length})
+            Selesai ({tabunganList.filter((t) => t.status === "selesai").length}
+            )
           </Text>
         </TouchableOpacity>
       </View>
@@ -383,8 +390,8 @@ export default function LihatTabunganScreen({ navigation }) {
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
+          <RefreshControl
+            refreshing={refreshing}
             onRefresh={onRefresh}
             colors={["#2691B5"]}
           />
@@ -393,13 +400,13 @@ export default function LihatTabunganScreen({ navigation }) {
           <View style={styles.emptyContainer}>
             <MaterialIcons name="savings" size={100} color="#CBD5E1" />
             <Text style={styles.emptyTitle}>
-              {filter === "selesai" 
-                ? "Belum ada tabungan yang selesai" 
+              {filter === "selesai"
+                ? "Belum ada tabungan yang selesai"
                 : "Belum ada tabungan nih! 🐷"}
             </Text>
             <Text style={styles.emptySubtitle}>
-              {filter === "semua" 
-                ? "Yuk mulai menabung untuk mencapai impianmu!" 
+              {filter === "semua"
+                ? "Yuk mulai menabung untuk mencapai impianmu!"
                 : "Ayo selesaikan tabungan yang sedang berjalan!"}
             </Text>
             {filter === "semua" && (
@@ -470,7 +477,9 @@ export default function LihatTabunganScreen({ navigation }) {
                       placeholder="0"
                       keyboardType="numeric"
                       value={nominalInput}
-                      onChangeText={(text) => setNominalInput(formatInputCurrency(text))}
+                      onChangeText={(text) =>
+                        setNominalInput(formatInputCurrency(text))
+                      }
                       autoFocus
                     />
                   </View>
@@ -585,9 +594,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   cardCompleted: {
-  borderWidth: 3,
-  borderColor: "transparent",
-},
+    borderWidth: 3,
+    borderColor: "transparent",
+  },
   cardHeaderPattern: {
     backgroundColor: "#2691B5",
     paddingHorizontal: 20,

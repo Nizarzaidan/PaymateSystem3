@@ -52,11 +52,9 @@ export default function TambahTagihanScreen({ navigation }) {
         catatan: catatan.trim(),
       };
 
-      const response = await axios.post(
-        "http://10.66.58.196:8080/api/tagihan",
-        payload,
-        { headers: { "Content-Type": "application/json" } }
-      );
+      const response = await api.post("/tagihan", payload, {
+        headers: { "Content-Type": "application/json" },
+      });
 
       if (response.status === 200 || response.status === 201) {
         Alert.alert("Sukses ✅", "Tagihan berhasil disimpan!");
@@ -84,7 +82,6 @@ export default function TambahTagihanScreen({ navigation }) {
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
-
         {/* Form Input */}
         <View style={styles.formBox}>
           <Text style={styles.label}>Nama Tagihan *</Text>
@@ -162,10 +159,7 @@ export default function TambahTagihanScreen({ navigation }) {
         </View>
 
         {/* Tombol Simpan */}
-        <TouchableOpacity 
-          style={styles.saveButton} 
-          onPress={handleSave}
-        >
+        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
           <Text style={styles.saveButtonText}>Simpan Tagihan</Text>
         </TouchableOpacity>
       </ScrollView>

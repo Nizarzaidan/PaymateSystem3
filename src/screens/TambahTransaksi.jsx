@@ -82,10 +82,7 @@ export default function TambahTransaksiScreen({ navigation }) {
     console.log("📤 Data yang dikirim:", data);
 
     try {
-      const res = await axios.post(
-        "http://10.66.58.196:8080/api/transaksi-keuangan",
-        data
-      );
+      const res = await api.post("/transaksi-keuangan", data);
       Alert.alert("Berhasil", "Transaksi berhasil disimpan!");
       setNominal("");
       setCatatan("");
