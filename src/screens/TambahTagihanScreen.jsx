@@ -11,19 +11,21 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { LinearGradient } from "expo-linear-gradient";
 import axios from "axios";
 
 export default function TambahTagihanScreen({ navigation }) {
   const [namaTagihan, setNamaTagihan] = useState("");
   const [nominalTagihan, setNominalTagihan] = useState("");
   const [tanggalPelunasan, setTanggalPelunasan] = useState("");
+  const [catatan, setCatatan] = useState("");
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isBerkala, setIsBerkala] = useState(false);
 
   const handleDateChange = (event, selectedDate) => {
     setShowDatePicker(false);
     if (selectedDate) {
-      const formattedDate = selectedDate.toISOString().split("T")[0]; // yyyy-mm-dd
+      const formattedDate = selectedDate.toISOString().split("T")[0];
       setTanggalPelunasan(formattedDate);
     }
   };
@@ -35,197 +37,222 @@ export default function TambahTagihanScreen({ navigation }) {
     }
 
     try {
-      // ✅ Sesuaikan dengan CHECK constraint DB
       const tipePerulangan = isBerkala ? "bulanan" : "tidak_berulang";
-      const statusTagihan = "aktif";
+      const statusTagihan = "Belum Lunas"; // Default status
 
       const payload = {
-        pengguna: { idPengguna: 1 }, // sesuaikan ID pengguna dengan DB kamu
+        pengguna: { idPengguna: 1 },
         namaTagihan: namaTagihan.trim(),
-        nominal: parseFloat(nominalTagihan),
+        nominal: parseFloat(nominalTagihan.replace(/\./g, "")),
         tanggalJatuhTempo: tanggalPelunasan,
         tipePerulangan: tipePerulangan,
         terakhirDikirim: new Date().toISOString(),
         status: statusTagihan,
+        catatan: catatan.trim(),
       };
 
-      console.log("📦 Data dikirim ke backend:", payload);
-
       const response = await axios.post(
-        "http://10.1.5.173:8080/api/tagihan",
+        "http://10.66.58.196:8080/api/tagihan",
         payload,
         { headers: { "Content-Type": "application/json" } }
       );
 
       if (response.status === 200 || response.status === 201) {
         Alert.alert("Sukses ✅", "Tagihan berhasil disimpan!");
+        setNamaTagihan("");
+        setNominalTagihan("");
+        setTanggalPelunasan("");
+        setCatatan("");
+        setIsBerkala(false);
         navigation.goBack();
       } else {
         Alert.alert("Gagal ❌", "Terjadi kesalahan saat menyimpan tagihan.");
       }
     } catch (error) {
       console.error("❌ Error saat simpan tagihan:", error);
-      if (error.response) {
-        Alert.alert(
-          "Error Server",
-          `Status: ${error.response.status}\n${
-            error.response.data?.message || "Terjadi kesalahan pada server."
-          }`
-        );
-      } else {
-        Alert.alert(
-          "Koneksi Gagal",
-          "Tidak dapat terhubung ke server backend."
-        );
-      }
+      Alert.alert("Koneksi Gagal", "Tidak dapat terhubung ke server backend.");
     }
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-        ></TouchableOpacity>
-        <Text style={styles.headerTitle}>Tambah Tagihan</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <LinearGradient
+      colors={["#ffffffff", "#ffffffff"]}
+      style={styles.gradientBackground}
+    >
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
 
-      {/* Form Input */}
-      <View style={styles.formBox}>
-        <Text style={styles.label}>Nama Tagihan *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Masukkan Nama Tagihan"
-          value={namaTagihan}
-          onChangeText={setNamaTagihan}
-        />
+        {/* Form Input */}
+        <View style={styles.formBox}>
+          <Text style={styles.label}>Nama Tagihan *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Masukkan Nama Tagihan"
+            placeholderTextColor="#93C5FD"
+            value={namaTagihan}
+            onChangeText={setNamaTagihan}
+          />
 
-        <Text style={styles.label}>Nominal Tagihan *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Masukkan Nominal Tagihan"
-          value={nominalTagihan}
-          onChangeText={setNominalTagihan}
-          keyboardType="numeric"
-        />
-
-        <Text style={styles.label}>Tanggal Jatuh Tempo *</Text>
-        <TouchableOpacity
-          style={styles.dateInput}
-          onPress={() => setShowDatePicker(true)}
-        >
-          <Text
-            style={{
-              color: tanggalPelunasan ? "#111827" : "#9CA3AF",
-              flex: 1,
+          <Text style={styles.label}>Nominal Tagihan *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Masukkan Nominal Tagihan"
+            placeholderTextColor="#93C5FD"
+            value={nominalTagihan}
+            onChangeText={(text) => {
+              const numericValue = text.replace(/\D/g, "");
+              const formattedValue = numericValue.replace(
+                /\B(?=(\d{3})+(?!\d))/g,
+                "."
+              );
+              setNominalTagihan(formattedValue);
             }}
+            keyboardType="numeric"
+          />
+
+          <Text style={styles.label}>Catatan</Text>
+          <TextInput
+            value={catatan}
+            onChangeText={setCatatan}
+            style={[styles.input, { height: 80, textAlignVertical: "top" }]}
+            placeholder="Tulis catatan tambahan (opsional)"
+            placeholderTextColor="#93C5FD"
+            multiline
+          />
+
+          <Text style={styles.label}>Tanggal Jatuh Tempo *</Text>
+          <TouchableOpacity
+            style={styles.dateInput}
+            onPress={() => setShowDatePicker(true)}
           >
-            {tanggalPelunasan
-              ? tanggalPelunasan
-              : "Tentukan tanggal jatuh tempo"}
-          </Text>
-          <Ionicons name="calendar-outline" size={20} color="#3B82F6" />
-        </TouchableOpacity>
+            <Text
+              style={{
+                color: tanggalPelunasan ? "#1E3A8A" : "#93C5FD",
+                flex: 1,
+              }}
+            >
+              {tanggalPelunasan
+                ? tanggalPelunasan
+                : "Tentukan tanggal jatuh tempo"}
+            </Text>
+            <Ionicons name="calendar-outline" size={20} color="#2691B5" />
+          </TouchableOpacity>
 
-        {showDatePicker && (
-          <DateTimePicker
-            value={new Date()}
-            mode="date"
-            display="default"
-            onChange={handleDateChange}
-          />
-        )}
+          {showDatePicker && (
+            <DateTimePicker
+              value={new Date()}
+              mode="date"
+              display="default"
+              onChange={handleDateChange}
+            />
+          )}
 
-        <View style={styles.keteranganRow}>
-          <Switch
-            value={isBerkala}
-            onValueChange={setIsBerkala}
-            trackColor={{ false: "#CBD5E1", true: "#3B82F6" }}
-            thumbColor={isBerkala ? "#fff" : "#f4f3f4"}
-          />
-          <Text style={styles.keteranganText}>Tagihan Berkala?</Text>
+          <View style={styles.keteranganRow}>
+            <Switch
+              value={isBerkala}
+              onValueChange={setIsBerkala}
+              trackColor={{ false: "#C4B5FD", true: "#2691B5" }}
+              thumbColor="#fff"
+            />
+            <Text style={styles.keteranganText}>Tagihan Berkala?</Text>
+          </View>
         </View>
-      </View>
 
-      {/* Tombol Simpan */}
-      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-        <Text style={styles.saveButtonText}>Simpan</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        {/* Tombol Simpan */}
+        <TouchableOpacity 
+          style={styles.saveButton} 
+          onPress={handleSave}
+        >
+          <Text style={styles.saveButtonText}>Simpan Tagihan</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  gradientBackground: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+  },
+  container: {
     padding: 20,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 15,
+    marginBottom: 25,
+    paddingHorizontal: 10,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#1E3A8A",
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#fff",
   },
   formBox: {
-    backgroundColor: "#E0F2FE",
+    backgroundColor: "rgba(255,255,255,0.95)",
     borderRadius: 15,
-    padding: 15,
+    padding: 20,
     borderWidth: 1,
-    borderColor: "#BAE6FD",
+    borderColor: "rgba(255,255,255,0.3)",
+    shadowColor: "#2691B5",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   label: {
-    color: "#1E3A8A",
-    fontWeight: "600",
-    marginTop: 10,
-    marginBottom: 5,
+    color: "#2691B5",
+    fontWeight: "700",
+    marginTop: 12,
+    marginBottom: 6,
+    fontSize: 14,
   },
   input: {
-    backgroundColor: "#fff",
+    backgroundColor: "#F0F9FF",
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#CBD5E1",
-    padding: 10,
+    borderColor: "#2691B5",
+    padding: 12,
     fontSize: 14,
-    color: "#111827",
+    color: "#1E3A8A",
   },
   dateInput: {
-    backgroundColor: "#fff",
+    backgroundColor: "#F0F9FF",
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#CBD5E1",
-    padding: 10,
+    borderColor: "#2691B5",
+    padding: 12,
     flexDirection: "row",
     alignItems: "center",
   },
   keteranganRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 15,
+    marginTop: 20,
   },
   keteranganText: {
-    color: "#1E293B",
+    color: "#2691B5",
     fontSize: 14,
-    marginLeft: 8,
+    marginLeft: 10,
+    fontWeight: "600",
   },
   saveButton: {
-    backgroundColor: "#1E3A8A",
-    paddingVertical: 12,
-    borderRadius: 25,
-    alignItems: "center",
+    backgroundColor: "#2691B5",
     marginTop: 25,
-    marginBottom: 40,
+    borderRadius: 12,
+    paddingVertical: 15,
+    alignItems: "center",
+    shadowColor: "#1A6A8F",
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+    marginBottom: 30,
   },
   saveButtonText: {
     color: "#fff",
-    fontWeight: "600",
+    fontWeight: "700",
     fontSize: 16,
   },
 });
