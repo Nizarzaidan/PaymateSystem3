@@ -92,8 +92,11 @@ export default function TambahTransaksiScreen({ navigation }) {
       setKategori(null);
     } catch (err) {
       console.error("❌ Error:", err.response?.data || err.message);
-      Alert.alert("Gagal", "Terjadi kesalahan saat menyimpan transaksi: " + 
-        (err.response?.data?.message || err.message));
+      Alert.alert(
+        "Gagal",
+        "Terjadi kesalahan saat menyimpan transaksi: " +
+          (err.response?.data?.message || err.message)
+      );
     }
   };
 
@@ -135,103 +138,103 @@ export default function TambahTransaksiScreen({ navigation }) {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.switchContainer}>
-        <TouchableOpacity
-          style={[
-            styles.switchButton,
-            tipe === "pemasukan" && styles.activeIncome,
-          ]}
-          onPress={() => handleTipeChange("pemasukan")}
-        >
-          <Text
-            style={[
-              styles.switchText,
-              tipe === "pemasukan" && styles.activeText,
-            ]}
-          >
-            Pemasukan
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.switchButton,
-            tipe === "pengeluaran" && styles.activeExpense,
-          ]}
-          onPress={() => handleTipeChange("pengeluaran")}
-        >
-          <Text
-            style={[
-              styles.switchText,
-              tipe === "pengeluaran" && styles.activeText,
-            ]}
-          >
-            Pengeluaran
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.kategoriContainer}>
-        {kategoriList[tipe].map((item) => (
+    <LinearGradient>
+      <ScrollView style={styles.container}>
+        <View style={styles.switchContainer}>
           <TouchableOpacity
-            key={item.id}
             style={[
-              styles.kategoriButton,
-              kategori?.id === item.id && styles.kategoriButtonActive,
+              styles.switchButton,
+              tipe === "pemasukan" && styles.activeIncome,
             ]}
-            onPress={() => setKategori(item)}
+            onPress={() => handleTipeChange("pemasukan")}
           >
-            <MaterialCommunityIcons
-              name={getIconName(item.nama)}
-              size={24}
-              color={kategori?.id === item.id ? "#fff" : "#2691B5"}
-            />
             <Text
               style={[
-                styles.kategoriText,
-                kategori?.id === item.id && { color: "#fff" },
+                styles.switchText,
+                tipe === "pemasukan" && styles.activeText,
               ]}
             >
-              {item.nama}
+              Pemasukan
             </Text>
           </TouchableOpacity>
-        ))}
-      </View>
 
-      <View style={styles.formContainer}>
-        <Text style={styles.label}>Nominal (Rp)</Text>
-        <TextInput
-          keyboardType="numeric"
-          value={nominal}
-          onChangeText={handleNominalChange}
-          style={styles.input}
-          placeholder="0"
-        />
-        {nominal ? (
-          <Text style={styles.nominalPreview}>
-            Rp {nominal}
-          </Text>
-        ) : null}
-
-        <Text style={styles.label}>Catatan</Text>
-        <TextInput
-          value={catatan}
-          onChangeText={setCatatan}
-          style={styles.input}
-          placeholder="Opsional"
-        />
-
-        {/* Debug Info */}
-        <View style={styles.debugContainer}>
-          <Text style={styles.debugText}>
-            Kategori terpilih: {kategori ? `${kategori.nama} (ID: ${kategori.id})` : 'Belum dipilih'}
-          </Text>
-          <Text style={styles.debugText}>
-            Tipe: {tipe}
-          </Text>
+          <TouchableOpacity
+            style={[
+              styles.switchButton,
+              tipe === "pengeluaran" && styles.activeExpense,
+            ]}
+            onPress={() => handleTipeChange("pengeluaran")}
+          >
+            <Text
+              style={[
+                styles.switchText,
+                tipe === "pengeluaran" && styles.activeText,
+              ]}
+            >
+              Pengeluaran
+            </Text>
+          </TouchableOpacity>
         </View>
-      </View>
+
+        <View style={styles.kategoriContainer}>
+          {kategoriList[tipe].map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={[
+                styles.kategoriButton,
+                kategori?.id === item.id && styles.kategoriButtonActive,
+              ]}
+              onPress={() => setKategori(item)}
+            >
+              <MaterialCommunityIcons
+                name={getIconName(item.nama)}
+                size={24}
+                color={kategori?.id === item.id ? "#fff" : "#2691B5"}
+              />
+              <Text
+                style={[
+                  styles.kategoriText,
+                  kategori?.id === item.id && { color: "#fff" },
+                ]}
+              >
+                {item.nama}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <View style={styles.formContainer}>
+          <Text style={styles.label}>Nominal (Rp)</Text>
+          <TextInput
+            keyboardType="numeric"
+            value={nominal}
+            onChangeText={handleNominalChange}
+            style={styles.input}
+            placeholder="0"
+          />
+          {nominal ? (
+            <Text style={styles.nominalPreview}>Rp {nominal}</Text>
+          ) : null}
+
+          <Text style={styles.label}>Catatan</Text>
+          <TextInput
+            value={catatan}
+            onChangeText={setCatatan}
+            style={styles.input}
+            placeholder="Opsional"
+          />
+
+          {/* Debug Info */}
+          <View style={styles.debugContainer}>
+            <Text style={styles.debugText}>
+              Kategori terpilih:{" "}
+              {kategori
+                ? `${kategori.nama} (ID: ${kategori.id})`
+                : "Belum dipilih"}
+            </Text>
+            <Text style={styles.debugText}>Tipe: {tipe}</Text>
+          </View>
+        </View>
 
         <TouchableOpacity style={styles.saveButton} onPress={simpanTransaksi}>
           <LinearGradient

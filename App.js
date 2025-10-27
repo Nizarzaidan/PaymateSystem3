@@ -6,7 +6,6 @@ import RegisterScreen from "./src/screens/RegisterScreen";
 import Dashboard from "./src/screens/Dashboard";
 import TambahTransaksi from "./src/screens/TambahTransaksi";
 import TabunganScreen from "./src/screens/TabunganScreen";
-import LihatTabunganScreen from "./src/screens/LihatTabunganScreen"; // BARU
 import TambahTagihanScreen from "./src/screens/TambahTagihanScreen";
 import TagihanScreen from "./src/screens/TagihanScreen";
 import RiwayatScreen from "./src/screens/RiwayatScreen";
