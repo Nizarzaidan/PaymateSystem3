@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
+import api from "../api/apiClient";
 
 export default function RiwayatScreen() {
   const [loading, setLoading] = useState(true);
@@ -33,11 +34,10 @@ export default function RiwayatScreen() {
   const fetchTransaksi = async () => {
     try {
       console.log("🔄 Mengambil data transaksi...");
-      const response = await axios.get(
-        "http://10.66.58.196:8080/api/transaksi-keuangan/pengguna/1"
-      );
+      const response = await api.get("/transaksi-keuangan/pengguna/1");
+
       console.log("📦 Data transaksi diterima:", response.data.length, "items");
-      
+
       setTransaksi(response.data);
     } catch (error) {
       console.error("❌ Gagal memuat riwayat:", error);
@@ -49,13 +49,15 @@ export default function RiwayatScreen() {
 
   const applyFilter = () => {
     let filtered = transaksi;
-    
+
     if (selectedFilter === "pemasukan") {
-      filtered = transaksi.filter(item => item.tipeTransaksi === "pemasukan");
+      filtered = transaksi.filter((item) => item.tipeTransaksi === "pemasukan");
     } else if (selectedFilter === "pengeluaran") {
-      filtered = transaksi.filter(item => item.tipeTransaksi === "pengeluaran");
+      filtered = transaksi.filter(
+        (item) => item.tipeTransaksi === "pengeluaran"
+      );
     }
-    
+
     setFilteredTransaksi(filtered);
     groupTransaksiByDate(filtered);
   };
@@ -73,7 +75,7 @@ export default function RiwayatScreen() {
         weekday: "long",
         day: "2-digit",
         month: "2-digit",
-        year: "numeric"
+        year: "numeric",
       });
 
       if (!grouped[date]) {
@@ -108,8 +110,8 @@ export default function RiwayatScreen() {
   // Fungsi untuk mendapatkan nama kategori dari objek kategori
   const getKategoriName = (kategoriObj) => {
     if (!kategoriObj) return "Lainnya";
-    
-    if (typeof kategoriObj === 'object') {
+
+    if (typeof kategoriObj === "object") {
       if (kategoriObj.namaKategori) {
         return kategoriObj.namaKategori;
       } else if (kategoriObj.nama) {
@@ -118,11 +120,11 @@ export default function RiwayatScreen() {
         return mapKategoriById(kategoriObj.idKategori);
       }
     }
-    
-    if (typeof kategoriObj === 'string') {
+
+    if (typeof kategoriObj === "string") {
       return kategoriObj;
     }
-    
+
     return "Lainnya";
   };
 
@@ -147,28 +149,32 @@ export default function RiwayatScreen() {
 
   const getCategoryIcon = (namaKategori) => {
     const icons = {
-      "Makanan": "🍽️",
-      "Transportasi": "🚗",
-      "Belanja": "🛒",
-      "Fashion": "👕",
-      "Pendidikan": "📚",
-      "Pulsa": "📱",
-      "Air": "💧",
-      "Listrik": "⚡",
-      "Pajak": "📄",
-      "Gaji": "💰",
-      "Investasi": "📈",
-      "Deposit": "🏦",
+      Makanan: "🍽️",
+      Transportasi: "🚗",
+      Belanja: "🛒",
+      Fashion: "👕",
+      Pendidikan: "📚",
+      Pulsa: "📱",
+      Air: "💧",
+      Listrik: "⚡",
+      Pajak: "📄",
+      Gaji: "💰",
+      Investasi: "📈",
+      Deposit: "🏦",
     };
     return icons[namaKategori] || "📋";
   };
 
   const getFilterText = () => {
     switch (selectedFilter) {
-      case "semua": return "Semua";
-      case "pemasukan": return "Pemasukan";
-      case "pengeluaran": return "Pengeluaran";
-      default: return "Semua";
+      case "semua":
+        return "Semua";
+      case "pemasukan":
+        return "Pemasukan";
+      case "pengeluaran":
+        return "Pengeluaran";
+      default:
+        return "Semua";
     }
   };
 
@@ -189,22 +195,24 @@ export default function RiwayatScreen() {
             <Text style={styles.categoryIconText}>{categoryIcon}</Text>
           </View>
           <View style={styles.transactionInfo}>
-            <Text style={styles.transactionCategory}>
-              {categoryName}
-            </Text>
-            <Text style={styles.transactionNote}>
-              {item.catatan || "-"}
-            </Text>
+            <Text style={styles.transactionCategory}>{categoryName}</Text>
+            <Text style={styles.transactionNote}>{item.catatan || "-"}</Text>
             <Text style={styles.transactionDate}>
               {new Date(item.tanggalTransaksi).toLocaleTimeString("id-ID", {
-                hour: '2-digit',
-                minute: '2-digit'
+                hour: "2-digit",
+                minute: "2-digit",
               })}
             </Text>
           </View>
         </View>
-        <Text style={[styles.transactionAmount, isIncome ? styles.incomeAmount : styles.expenseAmount]}>
-          {isIncome ? "+ " : "- "}Rp {item.nominal?.toLocaleString("id-ID") || "0"}
+        <Text
+          style={[
+            styles.transactionAmount,
+            isIncome ? styles.incomeAmount : styles.expenseAmount,
+          ]}
+        >
+          {isIncome ? "+ " : "- "}Rp{" "}
+          {item.nominal?.toLocaleString("id-ID") || "0"}
         </Text>
       </View>
     );
@@ -253,61 +261,68 @@ export default function RiwayatScreen() {
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>Filter Transaksi</Text>
-          
+
           <TouchableOpacity
             style={[
               styles.filterOption,
-              selectedFilter === "semua" && styles.filterOptionActive
+              selectedFilter === "semua" && styles.filterOptionActive,
             ]}
             onPress={() => {
               setSelectedFilter("semua");
               setFilterModalVisible(false);
             }}
           >
-            <Text style={[
-              styles.filterOptionText,
-              selectedFilter === "semua" && styles.filterOptionTextActive
-            ]}>
+            <Text
+              style={[
+                styles.filterOptionText,
+                selectedFilter === "semua" && styles.filterOptionTextActive,
+              ]}
+            >
               Semua Transaksi
             </Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={[
               styles.filterOption,
-              selectedFilter === "pemasukan" && styles.filterOptionActive
+              selectedFilter === "pemasukan" && styles.filterOptionActive,
             ]}
             onPress={() => {
               setSelectedFilter("pemasukan");
               setFilterModalVisible(false);
             }}
           >
-            <Text style={[
-              styles.filterOptionText,
-              selectedFilter === "pemasukan" && styles.filterOptionTextActive
-            ]}>
+            <Text
+              style={[
+                styles.filterOptionText,
+                selectedFilter === "pemasukan" && styles.filterOptionTextActive,
+              ]}
+            >
               Pemasukan
             </Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={[
               styles.filterOption,
-              selectedFilter === "pengeluaran" && styles.filterOptionActive
+              selectedFilter === "pengeluaran" && styles.filterOptionActive,
             ]}
             onPress={() => {
               setSelectedFilter("pengeluaran");
               setFilterModalVisible(false);
             }}
           >
-            <Text style={[
-              styles.filterOptionText,
-              selectedFilter === "pengeluaran" && styles.filterOptionTextActive
-            ]}>
+            <Text
+              style={[
+                styles.filterOptionText,
+                selectedFilter === "pengeluaran" &&
+                  styles.filterOptionTextActive,
+              ]}
+            >
               Pengeluaran
             </Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={styles.modalCloseButton}
             onPress={() => setFilterModalVisible(false)}
@@ -335,8 +350,8 @@ export default function RiwayatScreen() {
       {/* HEADER */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Riwayat Transaksi</Text>
-        <TouchableOpacity 
-          style={styles.filterButton} 
+        <TouchableOpacity
+          style={styles.filterButton}
           onPress={() => setFilterModalVisible(true)}
         >
           <Text style={styles.filterText}>{getFilterText()}</Text>
@@ -376,10 +391,9 @@ export default function RiwayatScreen() {
         <View style={styles.emptyContainer}>
           <Ionicons name="file-tray-outline" size={50} color="#9CA3AF" />
           <Text style={styles.emptyText}>
-            {selectedFilter === "semua" 
-              ? "Belum ada transaksi" 
-              : `Tidak ada transaksi ${getFilterText().toLowerCase()}`
-            }
+            {selectedFilter === "semua"
+              ? "Belum ada transaksi"
+              : `Tidak ada transaksi ${getFilterText().toLowerCase()}`}
           </Text>
           <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
             <Text style={styles.refreshButtonText}>Refresh</Text>

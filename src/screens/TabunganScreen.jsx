@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import api from "../api/apiClient"; // ✅ pakai api dari folder api
 import axios from "axios";
 import DateTimePicker from "@react-native-community/datetimepicker";
 

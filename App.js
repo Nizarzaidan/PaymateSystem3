@@ -4,14 +4,12 @@ import { createStackNavigator } from "@react-navigation/stack";
 
 import RegisterScreen from "./src/screens/RegisterScreen";
 import Dashboard from "./src/screens/Dashboard";
-import TambahTransaksi from "./src/screens/TambahTransaksi";
+import TambahTransaksiScreen from "./src/screens/TambahTransaksiScreen";
 import TabunganScreen from "./src/screens/TabunganScreen";
 import TambahTagihanScreen from "./src/screens/TambahTagihanScreen";
 import TagihanScreen from "./src/screens/TagihanScreen";
 import RiwayatScreen from "./src/screens/RiwayatScreen";
 import LihatTabunganScreen from "./src/screens/LihatTabunganScreen";
-
-
 
 const Stack = createStackNavigator();
 
@@ -30,8 +28,8 @@ export default function App() {
           options={{ headerShown: false }}
         />
         <Stack.Screen
-          name="TambahTransaksi"
-          component={TambahTransaksi}
+          name="TambahTransaksiScreen"
+          component={TambahTransaksiScreen}
           options={{
             title: "Tambah Transaksi",
             headerTitleAlign: "center", // posisikan di tengah

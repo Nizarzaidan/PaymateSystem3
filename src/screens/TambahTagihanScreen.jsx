@@ -10,9 +10,9 @@ import {
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import api from "../api/apiClient";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { LinearGradient } from "expo-linear-gradient";
-import axios from "axios";
 
 export default function TambahTagihanScreen({ navigation }) {
   const [namaTagihan, setNamaTagihan] = useState("");

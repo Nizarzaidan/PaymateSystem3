@@ -10,7 +10,8 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import axios from "axios";
+import api from "../api/apiClient"; // ✅ gunakan instance axios
+// Pastikan kamu punya file: src/api/apiClient.js
 
 export default function TambahTransaksiScreen({ navigation }) {
   const [tipe, setTipe] = useState("pengeluaran");
@@ -20,7 +21,7 @@ export default function TambahTransaksiScreen({ navigation }) {
   const idPengguna = 1;
   const idAkun = 1;
 
-  // Pastikan mapping ID sesuai dengan database
+  // ✅ kategoriList dijamin aman dan tidak akan undefined
   const kategoriList = {
     pengeluaran: [
       { id: 1, nama: "Makanan" },
@@ -40,40 +41,33 @@ export default function TambahTransaksiScreen({ navigation }) {
     ],
   };
 
-  // Fungsi untuk format nominal dengan separator
   const formatNominal = (value) => {
     const numericValue = value.replace(/[^\d]/g, "");
-    if (numericValue) {
-      return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-    }
-    return "";
+    return numericValue
+      ? numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+      : "";
   };
 
-  // Fungsi untuk konversi dari format display ke angka murni
-  const parseNominal = (formattedValue) => {
-    return formattedValue.replace(/\./g, "");
-  };
+  const parseNominal = (formattedValue) => formattedValue.replace(/\./g, "");
 
   const handleNominalChange = (text) => {
     const formatted = formatNominal(text);
     setNominal(formatted);
   };
 
-  // ✅ Simpan transaksi
   const simpanTransaksi = async () => {
     if (!nominal || !kategori) {
       Alert.alert("Lengkapi Data", "Nominal dan kategori wajib diisi");
       return;
     }
 
-    // Konversi nominal dari format display ke angka murni
     const nominalNumber = parseNominal(nominal);
 
     const data = {
       pengguna: { idPengguna },
       akun: { idAkun },
       tipeTransaksi: tipe,
-      kategori: { idKategori: kategori.id }, // Gunakan ID dari objek kategori
+      kategori: { idKategori: kategori.id },
       nominal: parseFloat(nominalNumber),
       tanggalTransaksi: new Date().toISOString(),
       catatan,
@@ -83,7 +77,7 @@ export default function TambahTransaksiScreen({ navigation }) {
 
     try {
       const res = await api.post("/transaksi-keuangan", data);
-      Alert.alert("Berhasil", "Transaksi berhasil disimpan!");
+      Alert.alert("✅ Berhasil", "Transaksi berhasil disimpan!");
       setNominal("");
       setCatatan("");
       setKategori(null);
@@ -128,14 +122,13 @@ export default function TambahTransaksiScreen({ navigation }) {
     }
   };
 
-  // Reset kategori saat tipe transaksi berubah
   const handleTipeChange = (newTipe) => {
     setTipe(newTipe);
     setKategori(null);
   };
 
   return (
-    <LinearGradient>
+    <LinearGradient colors={["#ffffffff", "#ffffffff"]} style={{ flex: 1 }}>
       <ScrollView style={styles.container}>
         <View style={styles.switchContainer}>
           <TouchableOpacity
@@ -174,30 +167,31 @@ export default function TambahTransaksiScreen({ navigation }) {
         </View>
 
         <View style={styles.kategoriContainer}>
-          {kategoriList[tipe].map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={[
-                styles.kategoriButton,
-                kategori?.id === item.id && styles.kategoriButtonActive,
-              ]}
-              onPress={() => setKategori(item)}
-            >
-              <MaterialCommunityIcons
-                name={getIconName(item.nama)}
-                size={24}
-                color={kategori?.id === item.id ? "#fff" : "#2691B5"}
-              />
-              <Text
+          {Array.isArray(kategoriList[tipe]) &&
+            kategoriList[tipe].map((item) => (
+              <TouchableOpacity
+                key={item.id}
                 style={[
-                  styles.kategoriText,
-                  kategori?.id === item.id && { color: "#fff" },
+                  styles.kategoriButton,
+                  kategori?.id === item.id && styles.kategoriButtonActive,
                 ]}
+                onPress={() => setKategori(item)}
               >
-                {item.nama}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <MaterialCommunityIcons
+                  name={getIconName(item.nama)}
+                  size={24}
+                  color={kategori?.id === item.id ? "#fff" : "#2691B5"}
+                />
+                <Text
+                  style={[
+                    styles.kategoriText,
+                    kategori?.id === item.id && { color: "#fff" },
+                  ]}
+                >
+                  {item.nama}
+                </Text>
+              </TouchableOpacity>
+            ))}
         </View>
 
         <View style={styles.formContainer}>
@@ -221,7 +215,6 @@ export default function TambahTransaksiScreen({ navigation }) {
             placeholder="Opsional"
           />
 
-          {/* Debug Info */}
           <View style={styles.debugContainer}>
             <Text style={styles.debugText}>
               Kategori terpilih:{" "}
@@ -235,7 +228,7 @@ export default function TambahTransaksiScreen({ navigation }) {
 
         <TouchableOpacity style={styles.saveButton} onPress={simpanTransaksi}>
           <LinearGradient
-            colors={["#9333EA", "#7E22CE"]}
+            colors={["#2691B5", "#2691B5"]}
             style={styles.saveButtonGradient}
           >
             <Text style={styles.saveButtonText}>Simpan Transaksi</Text>
@@ -247,7 +240,6 @@ export default function TambahTransaksiScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  gradientContainer: { flex: 1 },
   container: { padding: 16, paddingBottom: 50 },
   switchContainer: {
     flexDirection: "row",
@@ -293,7 +285,7 @@ const styles = StyleSheet.create({
   },
   nominalPreview: {
     fontSize: 16,
-    color: "#2691B5",
+    color: "#ffffffff",
     marginBottom: 15,
     fontWeight: "600",
   },

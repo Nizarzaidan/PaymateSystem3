@@ -106,11 +106,17 @@ export default function Dashboard() {
   };
 
   const processChartData = (transaksi) => {
-    // Filter transaksi berdasarkan bulan yang dipilih
+    // ✅ Lindungi agar tidak error kalau data belum siap
+    if (!Array.isArray(transaksi)) {
+      console.warn("Data transaksi belum siap:", transaksi);
+      transaksi = [];
+    }
+
     const selectedYear = selectedDate.getFullYear();
     const selectedMonth = selectedDate.getMonth();
 
     const filteredTransaksi = transaksi.filter((item) => {
+      if (!item || !item.tanggalTransaksi) return false;
       const transaksiDate = new Date(item.tanggalTransaksi);
       return (
         transaksiDate.getFullYear() === selectedYear &&
@@ -118,84 +124,54 @@ export default function Dashboard() {
       );
     });
 
-    // Kelompokkan data per minggu dalam bulan tersebut
     const weeklyData = groupDataByWeek(
       filteredTransaksi,
       selectedYear,
       selectedMonth
     );
 
-    // Siapkan data untuk chart
-    const labels = weeklyData.map((week) => `Minggu ${week.week}`);
-    const pemasukanData = weeklyData.map((week) => week.pemasukan);
-    const pengeluaranData = weeklyData.map((week) => week.pengeluaran);
+    // ✅ Jika weeklyData tidak array, jadikan array kosong
+    const safeWeeklyData = Array.isArray(weeklyData) ? weeklyData : [];
 
-    const chartConfig = {
-      labels: labels,
+    const labels = safeWeeklyData.map((week) => `Minggu ${week.week}`);
+    const pemasukanData = safeWeeklyData.map((week) => week.pemasukan);
+    const pengeluaranData = safeWeeklyData.map((week) => week.pengeluaran);
+
+    setChartData({
+      labels: labels.length > 0 ? labels : ["M1", "M2", "M3", "M4"],
       datasets: [
         {
-          data: pemasukanData,
-          color: () => "#34D399", // Hijau untuk pemasukan
+          data: pemasukanData.length > 0 ? pemasukanData : [0, 0, 0, 0],
+          color: () => "#34D399",
           strokeWidth: 2,
         },
         {
-          data: pengeluaranData,
-          color: () => "#EF4444", // Merah untuk pengeluaran
+          data: pengeluaranData.length > 0 ? pengeluaranData : [0, 0, 0, 0],
+          color: () => "#EF4444",
           strokeWidth: 2,
         },
       ],
       legend: ["Pemasukan", "Pengeluaran"],
-    };
-
-    setChartData(chartConfig);
+    });
   };
 
+  // ✅ groupDataByWeek juga dilindungi
   const groupDataByWeek = (transaksi, year, month) => {
-    // Buat array untuk 4-5 minggu dalam bulan
+    if (!Array.isArray(transaksi)) return [];
+
     const weeks = [];
-
-    // Cari minggu pertama dalam bulan
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-
-    let currentWeek = 1;
-    let currentDate = new Date(firstDay);
-
-    // Inisialisasi data per minggu
-    while (currentDate <= lastDay) {
-      const weekStart = new Date(currentDate);
-      const weekEnd = new Date(currentDate);
-      weekEnd.setDate(weekEnd.getDate() + 6);
-
-      if (weekEnd > lastDay) {
-        weekEnd.setTime(lastDay.getTime());
-      }
-
-      weeks.push({
-        week: currentWeek,
-        startDate: new Date(weekStart),
-        endDate: new Date(weekEnd),
-        pemasukan: 0,
-        pengeluaran: 0,
-      });
-
-      currentWeek++;
-      currentDate.setDate(currentDate.getDate() + 7);
+    for (let i = 1; i <= 4; i++) {
+      weeks.push({ week: i, pemasukan: 0, pengeluaran: 0 });
     }
 
-    // Isi data transaksi ke dalam minggu yang sesuai
-    transaksi.forEach((transaksi) => {
-      const transaksiDate = new Date(transaksi.tanggalTransaksi);
-
-      for (let week of weeks) {
-        if (transaksiDate >= week.startDate && transaksiDate <= week.endDate) {
-          if (transaksi.tipeTransaksi === "pemasukan") {
-            week.pemasukan += transaksi.nominal || 0;
-          } else {
-            week.pengeluaran += transaksi.nominal || 0;
-          }
-          break;
-        }
+    transaksi.forEach((item) => {
+      const date = new Date(item.tanggalTransaksi);
+      const week = Math.ceil(date.getDate() / 7);
+      if (week >= 1 && week <= 4) {
+        if (item.jenis === "Pemasukan")
+          weeks[week - 1].pemasukan += item.jumlah;
+        else if (item.jenis === "Pengeluaran")
+          weeks[week - 1].pengeluaran += item.jumlah;
       }
     });
 
@@ -209,7 +185,7 @@ export default function Dashboard() {
 
   const formatBalanceDisplay = (value) => {
     if (!showBalance) {
-      return "••••••••";
+      return "Tampilkan Saldo";
     }
     return formatRupiah(value);
   };
@@ -339,7 +315,7 @@ export default function Dashboard() {
         <View style={styles.quickMenu}>
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => navigation.navigate("TambahTransaksi")}
+            onPress={() => navigation.navigate("TambahTransaksiScreen")}
           >
             <View style={[styles.menuIcon, { backgroundColor: "#E0F2FE" }]}>
               <Ionicons name="add-circle" size={28} color="#0EA5E9" />
@@ -388,7 +364,7 @@ export default function Dashboard() {
             Grafik Keuangan {formatDate(selectedDate)}
           </Text>
 
-          {chartData ? (
+          {chartData && chartData.labels && chartData.datasets ? (
             <LineChart
               data={chartData}
               width={width - 60}
