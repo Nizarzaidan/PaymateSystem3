@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,8 +12,10 @@ import {
   Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import axios from "axios";
+import { BASE_URL } from "../../../api/apiClient";
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function TabunganScreen({ navigation }) {
@@ -21,6 +23,8 @@ export default function TabunganScreen({ navigation }) {
   const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [userId, setUserId] = useState(null);
+  const [userData, setUserData] = useState(null);
   
   // State untuk form
   const [formData, setFormData] = useState({
@@ -31,6 +35,28 @@ export default function TabunganScreen({ navigation }) {
     tanggalSelesai: "",
     catatan: "",
   });
+
+  useEffect(() => {
+    getUserData();
+  }, []);
+
+  const getUserData = async () => {
+    try {
+      const storedUserData = await AsyncStorage.getItem("userData");
+      if (storedUserData) {
+        const user = JSON.parse(storedUserData);
+        console.log("👤 User data loaded:", user);
+        setUserId(user.idPengguna || user.id);
+        setUserData(user);
+      } else {
+        console.log("❌ No user data found");
+        Alert.alert("Error", "Silakan login kembali");
+        navigation.goBack();
+      }
+    } catch (error) {
+      console.error("❌ Error getting user data:", error);
+    }
+  };
 
   // Fungsi untuk memilih gambar
   const pickImage = async () => {
@@ -160,6 +186,11 @@ export default function TabunganScreen({ navigation }) {
 
   // Simpan tabungan ke backend
   const saveTabungan = async () => {
+    if (!userId) {
+      Alert.alert("Error", "User ID tidak ditemukan. Silakan login kembali.");
+      return;
+    }
+
     if (!validateForm()) return;
 
     setLoading(true);
@@ -167,7 +198,7 @@ export default function TabunganScreen({ navigation }) {
     try {
       // Format data sesuai dengan backend - pastikan angka dikirim sebagai number, bukan string
       const payload = {
-        pengguna: { idPengguna: 1 }, // Ganti dengan user ID yang login
+        pengguna: { idPengguna: userId }, // Gunakan userId dari state
         namaTarget: formData.namaTarget,
         targetNominal: parseCurrency(formData.targetNominal), // Pastikan angka, bukan string
         nominalSekarang: 0, // Default 0
@@ -184,7 +215,7 @@ export default function TabunganScreen({ navigation }) {
       console.log("Mengirim data:", payload);
 
       const response = await axios.post(
-        "http://10.66.58.196:8080/api/target-tabungan",
+        `${BASE_URL}/target-tabungan`,
         payload,
         { 
           headers: { 
@@ -369,11 +400,37 @@ export default function TabunganScreen({ navigation }) {
     );
   };
 
+  if (!userId) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2691B5" />
+        <Text style={{ marginTop: 10, color: "#6B7280" }}>
+          Memuat data pengguna...
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Header */}
-      
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Buat Tabungan Baru</Text>
+        <TouchableOpacity 
+          style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+          onPress={saveTabungan}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.saveText}>Simpan</Text>
+          )}
+        </TouchableOpacity>
+      </View>
 
+    
+      
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Upload Gambar */}
         <Text style={styles.sectionTitle}>Foto Tabungan (Opsional)</Text>
@@ -528,8 +585,6 @@ export default function TabunganScreen({ navigation }) {
           />
         </View>
 
-        
-
         {/* Info */}
         <View style={styles.infoBox}>
           <Ionicons name="information-circle-outline" size={20} color="#2691B5" />
@@ -538,21 +593,6 @@ export default function TabunganScreen({ navigation }) {
           </Text>
         </View>
       </ScrollView>
-
-       <TouchableOpacity 
-          style={[styles.saveButton, loading && styles.saveButtonDisabled]}
-          onPress={saveTabungan}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={styles.saveText}>Simpan</Text>
-          )}
-        </TouchableOpacity>
-
-        <View style={styles.header}>
-      </View>
 
       <CalendarModal />
     </View>
@@ -565,6 +605,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8FAFC",
     padding: 20,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -575,6 +621,24 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     color: "#2691B5",
+  },
+  userInfo: {
+    backgroundColor: "#EFF6FF",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: "#2691B5",
+  },
+  userInfoText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#2691B5",
+  },
+  userIdText: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginTop: 4,
   },
   saveButton: {
     backgroundColor: "#2691B5",
