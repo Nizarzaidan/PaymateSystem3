@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  StatusBar,
   ScrollView,
   Dimensions,
   SafeAreaView,
@@ -18,7 +17,13 @@ import { LineChart } from "react-native-chart-kit";
 import { useNavigation, useIsFocused } from "@react-navigation/native";
 import { Calendar } from "react-native-calendars";
 import axios from "axios";
+<<<<<<< HEAD:src/screens/Dashboard.jsx
 import api from "../api/apiClient";
+=======
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { BASE_URL } from "../../../api/apiClient";
+import * as Animatable from "react-native-animatable";
+>>>>>>> 920285b9a195a19258e7dbb97f35db3dfd3942e7:src/screens/user/dashboard/Dashboard.jsx
 
 const { width } = Dimensions.get("window");
 
@@ -30,60 +35,142 @@ export default function Dashboard() {
   const [showBalance, setShowBalance] = useState(true);
 
   const [loading, setLoading] = useState(true);
-  const [saldo, setSaldo] = useState(0);
-  const [pemasukan, setPemasukan] = useState(0);
-  const [pengeluaran, setPengeluaran] = useState(0);
+  const [userData, setUserData] = useState(null);
+  const [userId, setUserId] = useState(null);
+  
+  // Reward states
+  const [poin, setPoin] = useState(0);
+  const [medali, setMedali] = useState(0);
+  const [level, setLevel] = useState("Pemula");
+  const [showRewardAnimation, setShowRewardAnimation] = useState(false);
+  
+  const [totalSaldo, setTotalSaldo] = useState(0);
+  const [pemasukanBulanIni, setPemasukanBulanIni] = useState(0);
+  const [pengeluaranBulanIni, setPengeluaranBulanIni] = useState(0);
   const [chartData, setChartData] = useState(null);
   const [transaksiData, setTransaksiData] = useState([]);
 
-  useEffect(() => {
-    if (isFocused) {
-      fetchDashboardData();
-      fetchTransaksiForChart();
-    }
-  }, [selectedDate, isFocused]);
+<<<<<<< HEAD:src/screens/Dashboard.jsx
+=======
+  const levelData = {
+    Pemula: { minMedal: 0, color: "#6B7280", icon: "🌱" },
+    Perunggu: { minMedal: 1, color: "#CD7F32", icon: "🥉" },
+    Perak: { minMedal: 3, color: "#C0C0C0", icon: "🥈" },
+    Emas: { minMedal: 5, color: "#FFD700", icon: "🥇" },
+    Platinum: { minMedal: 8, color: "#E5E4E2", icon: "🏆" },
+    Berlian: { minMedal: 12, color: "#B9F2FF", icon: "💎" },
+  };
 
-  const fetchDashboardData = async () => {
+>>>>>>> 920285b9a195a19258e7dbb97f35db3dfd3942e7:src/screens/user/dashboard/Dashboard.jsx
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  useEffect(() => {
+    if (isFocused && userId) {
+      fetchAllData();
+      fetchRewardData();
+    }
+  }, [selectedDate, isFocused, userId]);
+
+  // Update level ketika medali berubah
+  useEffect(() => {
+    if (medali >= levelData.Berlian.minMedal) setLevel("Berlian");
+    else if (medali >= levelData.Platinum.minMedal) setLevel("Platinum");
+    else if (medali >= levelData.Emas.minMedal) setLevel("Emas");
+    else if (medali >= levelData.Perak.minMedal) setLevel("Perak");
+    else if (medali >= levelData.Perunggu.minMedal) setLevel("Perunggu");
+    else setLevel("Pemula");
+  }, [medali]);
+
+  const checkAuth = async () => {
+    try {
+      const token = await AsyncStorage.getItem("jwtToken");
+      const userDataString = await AsyncStorage.getItem("userData");
+      
+      if (token && userDataString) {
+        const userData = JSON.parse(userDataString);
+        setUserData(userData);
+        setUserId(userData.idPengguna || userData.id);
+      } else {
+        navigation.replace("LoginScreen");
+      }
+    } catch (error) {
+      console.error("❌ Auth check error:", error);
+      navigation.replace("LoginScreen");
+    }
+  };
+
+  const fetchRewardData = async () => {
+    if (!userId) {
+      console.log("❌ User ID not available");
+      return;
+    }
+
+    try {
+      const response = await axios.get(
+        `${BASE_URL}/reward-gamification/${userId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${await AsyncStorage.getItem("jwtToken")}`
+          }
+        }
+      );
+
+      if (response.data && response.data.code === 200) {
+        const rewardInfo = response.data.data;
+        setPoin(rewardInfo.poin || 0);
+        setMedali(rewardInfo.medali || 0);
+      }
+    } catch (error) {
+      console.error("❌ Error fetching reward data:", error);
+    }
+  };
+
+  const fetchAllData = async () => {
+    if (!userId) {
+      console.log("❌ User ID not available");
+      return;
+    }
+
     try {
       setLoading(true);
+<<<<<<< HEAD:src/screens/Dashboard.jsx
       const idPengguna = 1;
 
       const response = await api.get(
         `/transaksi-keuangan/pengguna/${idPengguna}/laporan/rekap`
+=======
+      
+      // Fetch transaksi data
+      const transaksiResponse = await axios.get(
+        `${BASE_URL}/transaksi-keuangan/pengguna/${userId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${await AsyncStorage.getItem("jwtToken")}`
+          }
+        }
+>>>>>>> 920285b9a195a19258e7dbb97f35db3dfd3942e7:src/screens/user/dashboard/Dashboard.jsx
       );
-      console.log("📦 Data dari backend:", response.data);
 
-      if (!response.data || response.data.length === 0) {
-        Alert.alert("Info", "Belum ada data rekap untuk pengguna ini.");
-        setSaldo(0);
-        setPemasukan(0);
-        setPengeluaran(0);
-        return;
-      }
-
-      const data = response.data[0];
-      const totalPemasukan = data.totalPemasukan || 0;
-      const totalPengeluaran = data.totalPengeluaran || 0;
-      const totalSaldo = totalPemasukan - totalPengeluaran;
-
-      setPemasukan(totalPemasukan);
-      setPengeluaran(totalPengeluaran);
-      setSaldo(totalSaldo);
+      
+      setTransaksiData(transaksiResponse.data);
+      calculateTotalSaldo(transaksiResponse.data);
+      calculateMonthlyData(transaksiResponse.data);
+      processChartData(transaksiResponse.data);
+      
     } catch (error) {
-      console.error("❌ Gagal memuat data dashboard:", error);
-      Alert.alert(
-        "Error",
-        `Gagal memuat data: ${
-          error.response?.status === 404
-            ? "Data tidak ditemukan (404)"
-            : error.message
-        }`
-      );
+      console.error("❌ Error:", error);
+      if (error.response?.status === 401) {
+        await AsyncStorage.clear();
+        navigation.replace("LoginScreen");
+      }
     } finally {
       setLoading(false);
     }
   };
 
+<<<<<<< HEAD:src/screens/Dashboard.jsx
   const fetchTransaksiForChart = async () => {
     try {
       const idPengguna = 1;
@@ -112,6 +199,49 @@ export default function Dashboard() {
       transaksi = [];
     }
 
+=======
+  const calculateTotalSaldo = (transaksi) => {
+    let totalPemasukan = 0;
+    let totalPengeluaran = 0;
+
+    transaksi.forEach(item => {
+      if (item.tipeTransaksi === "pemasukan") {
+        totalPemasukan += item.nominal || 0;
+      } else {
+        totalPengeluaran += item.nominal || 0;
+      }
+    });
+
+    setTotalSaldo(totalPemasukan - totalPengeluaran);
+  };
+
+  const calculateMonthlyData = (transaksi) => {
+    const selectedYear = selectedDate.getFullYear();
+    const selectedMonth = selectedDate.getMonth();
+    
+    const transaksisBulanIni = transaksi.filter(item => {
+      const transaksiDate = new Date(item.tanggalTransaksi);
+      return transaksiDate.getFullYear() === selectedYear && 
+             transaksiDate.getMonth() === selectedMonth;
+    });
+
+    let pemasukan = 0;
+    let pengeluaran = 0;
+
+    transaksisBulanIni.forEach(item => {
+      if (item.tipeTransaksi === "pemasukan") {
+        pemasukan += item.nominal || 0;
+      } else {
+        pengeluaran += item.nominal || 0;
+      }
+    });
+
+    setPemasukanBulanIni(pemasukan);
+    setPengeluaranBulanIni(pengeluaran);
+  };
+
+  const processChartData = (transaksi) => {
+>>>>>>> 920285b9a195a19258e7dbb97f35db3dfd3942e7:src/screens/user/dashboard/Dashboard.jsx
     const selectedYear = selectedDate.getFullYear();
     const selectedMonth = selectedDate.getMonth();
 
@@ -124,11 +254,19 @@ export default function Dashboard() {
       );
     });
 
+<<<<<<< HEAD:src/screens/Dashboard.jsx
     const weeklyData = groupDataByWeek(
       filteredTransaksi,
       selectedYear,
       selectedMonth
     );
+=======
+    const weeklyData = groupDataByWeek(filteredTransaksi, selectedYear, selectedMonth);
+    
+    const labels = weeklyData.map(week => `Minggu ${week.week}`);
+    const pemasukanData = weeklyData.map(week => week.pemasukan);
+    const pengeluaranData = weeklyData.map(week => week.pengeluaran);
+>>>>>>> 920285b9a195a19258e7dbb97f35db3dfd3942e7:src/screens/user/dashboard/Dashboard.jsx
 
     // ✅ Jika weeklyData tidak array, jadikan array kosong
     const safeWeeklyData = Array.isArray(weeklyData) ? weeklyData : [];
@@ -141,12 +279,20 @@ export default function Dashboard() {
       labels: labels.length > 0 ? labels : ["M1", "M2", "M3", "M4"],
       datasets: [
         {
+<<<<<<< HEAD:src/screens/Dashboard.jsx
           data: pemasukanData.length > 0 ? pemasukanData : [0, 0, 0, 0],
+=======
+          data: pemasukanData,
+>>>>>>> 920285b9a195a19258e7dbb97f35db3dfd3942e7:src/screens/user/dashboard/Dashboard.jsx
           color: () => "#34D399",
           strokeWidth: 2,
         },
         {
+<<<<<<< HEAD:src/screens/Dashboard.jsx
           data: pengeluaranData.length > 0 ? pengeluaranData : [0, 0, 0, 0],
+=======
+          data: pengeluaranData,
+>>>>>>> 920285b9a195a19258e7dbb97f35db3dfd3942e7:src/screens/user/dashboard/Dashboard.jsx
           color: () => "#EF4444",
           strokeWidth: 2,
         },
@@ -157,6 +303,7 @@ export default function Dashboard() {
 
   // ✅ groupDataByWeek juga dilindungi
   const groupDataByWeek = (transaksi, year, month) => {
+<<<<<<< HEAD:src/screens/Dashboard.jsx
     if (!Array.isArray(transaksi)) return [];
 
     const weeks = [];
@@ -172,6 +319,48 @@ export default function Dashboard() {
           weeks[week - 1].pemasukan += item.jumlah;
         else if (item.jenis === "Pengeluaran")
           weeks[week - 1].pengeluaran += item.jumlah;
+=======
+    const weeks = [];
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    
+    let currentWeek = 1;
+    let currentDate = new Date(firstDay);
+    
+    while (currentDate <= lastDay) {
+      const weekStart = new Date(currentDate);
+      const weekEnd = new Date(currentDate);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      
+      if (weekEnd > lastDay) {
+        weekEnd.setTime(lastDay.getTime());
+      }
+      
+      weeks.push({
+        week: currentWeek,
+        startDate: new Date(weekStart),
+        endDate: new Date(weekEnd),
+        pemasukan: 0,
+        pengeluaran: 0
+      });
+      
+      currentWeek++;
+      currentDate.setDate(currentDate.getDate() + 7);
+    }
+
+    transaksi.forEach(transaksi => {
+      const transaksiDate = new Date(transaksi.tanggalTransaksi);
+      
+      for (let week of weeks) {
+        if (transaksiDate >= week.startDate && transaksiDate <= week.endDate) {
+          if (transaksi.tipeTransaksi === "pemasukan") {
+            week.pemasukan += transaksi.nominal || 0;
+          } else {
+            week.pengeluaran += transaksi.nominal || 0;
+          }
+          break;
+        }
+>>>>>>> 920285b9a195a19258e7dbb97f35db3dfd3942e7:src/screens/user/dashboard/Dashboard.jsx
       }
     });
 
@@ -184,9 +373,13 @@ export default function Dashboard() {
   };
 
   const formatBalanceDisplay = (value) => {
+<<<<<<< HEAD:src/screens/Dashboard.jsx
     if (!showBalance) {
       return "Tampilkan Saldo";
     }
+=======
+    if (!showBalance) return "••••••••";
+>>>>>>> 920285b9a195a19258e7dbb97f35db3dfd3942e7:src/screens/user/dashboard/Dashboard.jsx
     return formatRupiah(value);
   };
 
@@ -226,7 +419,6 @@ export default function Dashboard() {
     setShowBalance(!showBalance);
   };
 
-  // Fungsi untuk mendapatkan data default jika tidak ada data
   const getDefaultChartData = () => {
     return {
       labels: ["Minggu 1", "Minggu 2", "Minggu 3", "Minggu 4"],
@@ -246,19 +438,57 @@ export default function Dashboard() {
     };
   };
 
+  const handleLogout = async () => {
+    await AsyncStorage.clear();
+    navigation.replace("LoginScreen");
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#f3eaeaff" barStyle="light-content" />
-
       {/* HEADER */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View>
-            <Text style={styles.welcomeText}>Selamat Datang!</Text>
-            <Text style={styles.emailText}>Kelola keuangan dengan mudah</Text>
+            <Text style={styles.welcomeText}>
+              Selamat Datang, {userData?.nama_lengkap || "User"}!
+            </Text>
+            <Text style={styles.emailText}>{userData?.email || ""}</Text>
           </View>
-          <Text style={styles.timeText}>{getCurrentTime()}</Text>
+          <View style={styles.headerRight}>
+            <Text style={styles.timeText}>{getCurrentTime()}</Text>
+            <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+              <Ionicons name="log-out-outline" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
+
+        {/* REWARD CARD - BARU */}
+        <TouchableOpacity 
+          onPress={() => navigation.navigate("RewardTarget")}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={["#667eea", "#764ba2"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.rewardCard}
+          >
+            <Animatable.View animation="pulse" iterationCount="infinite" duration={2000}>
+              <View style={styles.rewardHeader}>
+                <Text style={styles.rewardIcon}>{levelData[level].icon}</Text>
+                <View style={styles.rewardInfo}>
+                  <Text style={styles.rewardLevel}>Level: {level}</Text>
+                  <View style={styles.rewardStats}>
+                    <Text style={styles.rewardText}>💰 {poin} Poin</Text>
+                    <Text style={styles.rewardDivider}>•</Text>
+                    <Text style={styles.rewardText}>🏅 {medali} Medali</Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
+              </View>
+            </Animatable.View>
+          </LinearGradient>
+        </TouchableOpacity>
 
         <LinearGradient
           colors={["#6FB4CC", "#5F78BA"]}
@@ -271,7 +501,10 @@ export default function Dashboard() {
           ) : (
             <>
               <View style={styles.balanceTop}>
-                <Text style={styles.balanceLabel}>Total Saldo</Text>
+                <View>
+                  <Text style={styles.balanceLabel}>Total Saldo</Text>
+                  <Text style={styles.balanceSubLabel}>Keseluruhan (All Time)</Text>
+                </View>
                 <TouchableOpacity onPress={toggleBalanceVisibility}>
                   <Ionicons
                     name={showBalance ? "eye-outline" : "eye-off-outline"}
@@ -282,23 +515,29 @@ export default function Dashboard() {
               </View>
 
               <Text style={styles.balanceAmount}>
-                {formatBalanceDisplay(saldo)}
+                {formatBalanceDisplay(totalSaldo)}
               </Text>
+
+              <View style={styles.monthInfoContainer}>
+                <Text style={styles.monthInfoText}>
+                  {formatDate(selectedDate)}
+                </Text>
+              </View>
 
               <View style={styles.incomeExpenseContainer}>
                 <View style={styles.incomeExpenseItem}>
-                  <Text style={styles.incomeExpenseLabel}>Pemasukan</Text>
+                  <Text style={styles.incomeExpenseLabel}>Pemasukan Bulan Ini</Text>
                   <Text style={styles.incomeAmount}>
-                    {formatBalanceDisplay(pemasukan)}
+                    {formatBalanceDisplay(pemasukanBulanIni)}
                   </Text>
                 </View>
 
                 <View style={styles.divider} />
 
                 <View style={styles.incomeExpenseItem}>
-                  <Text style={styles.incomeExpenseLabel}>Pengeluaran</Text>
+                  <Text style={styles.incomeExpenseLabel}>Pengeluaran Bulan Ini</Text>
                   <Text style={styles.expenseAmount}>
-                    {formatBalanceDisplay(pengeluaran)}
+                    {formatBalanceDisplay(pengeluaranBulanIni)}
                   </Text>
                 </View>
               </View>
@@ -413,7 +652,6 @@ export default function Dashboard() {
             />
           )}
 
-          {/* LEGENDA */}
           <View style={styles.legendContainer}>
             <View style={styles.legendItem}>
               <View
@@ -429,18 +667,17 @@ export default function Dashboard() {
             </View>
           </View>
 
-          {/* INFO STATISTIK */}
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>Total Pemasukan</Text>
               <Text style={[styles.statValue, styles.incomeValue]}>
-                {formatRupiah(pemasukan)}
+                {formatRupiah(pemasukanBulanIni)}
               </Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>Total Pengeluaran</Text>
               <Text style={[styles.statValue, styles.expenseValue]}>
-                {formatRupiah(pengeluaran)}
+                {formatRupiah(pengeluaranBulanIni)}
               </Text>
             </View>
           </View>
@@ -530,7 +767,10 @@ export default function Dashboard() {
           <Text style={styles.navText}>Tagihan</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("ProfileScreen")}
+        >
           <Ionicons name="person-outline" size={24} color="#9CA3AF" />
           <Text style={styles.navText}>Profil</Text>
         </TouchableOpacity>
@@ -555,6 +795,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
   },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   welcomeText: {
     color: "#fff",
     fontSize: 20,
@@ -569,6 +814,53 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontWeight: "500",
+  },
+  logoutButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  // REWARD CARD STYLES - BARU
+  rewardCard: {
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  rewardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  rewardIcon: {
+    fontSize: 32,
+    marginRight: 12,
+  },
+  rewardInfo: {
+    flex: 1,
+  },
+  rewardLevel: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  rewardStats: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  rewardText: {
+    color: "rgba(255,255,255,0.9)",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  rewardDivider: {
+    color: "rgba(255,255,255,0.5)",
+    marginHorizontal: 8,
   },
   balanceCard: {
     borderRadius: 20,
@@ -585,17 +877,42 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
+<<<<<<< HEAD:src/screens/Dashboard.jsx
   balanceLabel: {
     color: "rgba(255,255,255,0.85)",
     fontSize: 13,
     fontWeight: "500",
+=======
+  balanceLabel: { 
+    color: "rgba(255,255,255,0.95)", 
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  balanceSubLabel: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 11,
+    marginTop: 2,
+>>>>>>> 920285b9a195a19258e7dbb97f35db3dfd3942e7:src/screens/user/dashboard/Dashboard.jsx
   },
   balanceAmount: {
     color: "white",
     fontSize: 32,
     fontWeight: "700",
-    marginBottom: 20,
+    marginBottom: 15,
     letterSpacing: 0.5,
+  },
+  monthInfoContainer: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+    alignSelf: 'flex-start',
+  },
+  monthInfoText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   incomeExpenseContainer: {
     flexDirection: "row",
@@ -820,7 +1137,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingVertical: 10,
-    paddingHorizontal: 10,
     borderTopColor: "#E5E7EB",
     borderTopWidth: 1,
     elevation: 10,

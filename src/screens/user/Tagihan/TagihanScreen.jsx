@@ -12,41 +12,65 @@ import {
   Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import api from "../api/apiClient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "../../../api/apiClient";
 
 export default function TagihanScreen() {
   const [tagihan, setTagihan] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState("Semua");
+  const [userId, setUserId] = useState(null);
 
   useEffect(() => {
-    getTagihan();
+    getUserId();
   }, []);
 
-  // Fungsi untuk format nominal dengan separator
+  useEffect(() => {
+    if (userId) {
+      getTagihan();
+    }
+  }, [userId]);
+
+  const getUserId = async () => {
+    try {
+      const userData = await AsyncStorage.getItem("userData");
+      if (userData) {
+        const user = JSON.parse(userData);
+        console.log("👤 User data loaded:", user);
+        setUserId(user.idPengguna || user.id);
+      } else {
+        console.log("❌ No user data found");
+      }
+    } catch (error) {
+      console.error("❌ Error getting user data:", error);
+    }
+  };
+
   const formatNominal = (nominal) => {
     if (!nominal) return "0";
-    
-    // Konversi ke string dan format dengan separator
     return nominal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   };
 
   const getTagihan = async (status = "all") => {
+    if (!userId) {
+      console.log("❌ User ID not available");
+      return;
+    }
+
     try {
       setLoading(true);
       let response;
       
       if (status === "all" || status === "Semua") {
-        response = await api.get("/tagihan/pengguna/1");
+        response = await api.get(`/tagihan/pengguna/${userId}`);
       } else {
-        response = await api.get(`/tagihan/pengguna/1/status/${status}`);
+        response = await api.get(`/tagihan/pengguna/${userId}/status/${status}`);
       }
       
       console.log("Data diterima:", response.data);
 
       if (Array.isArray(response.data)) {
-        // Reverse array untuk menampilkan data baru di paling atas
         setTagihan(response.data.reverse());
       } else {
         console.warn("Data bukan array:", response.data);
@@ -87,6 +111,15 @@ export default function TagihanScreen() {
     }
   };
 
+  if (loading && !userId) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2691B5" />
+        <Text style={styles.loadingText}>Memuat data pengguna...</Text>
+      </View>
+    );
+  }
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -98,46 +131,47 @@ export default function TagihanScreen() {
 
   const renderItem = ({ item }) => (
     <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.cardTitle}>{item.namaTagihan}</Text>
-        <Text style={styles.dateText}>{item.tanggalJatuhTempo || "27/10/2025"}</Text>
-      </View>
+      <View style={styles.cardLayout}>
+        {/* Icon Left */}
+        <View style={styles.iconContainer}>
+          <Ionicons name="notifications" size={24} color="#FFFFFF" />
+        </View>
 
-      <View style={styles.cardContent}>
-        {/* Menggunakan formatNominal untuk menampilkan nominal dengan separator */}
-        <Text style={styles.amountText}>Rp {formatNominal(item.nominal)}</Text>
-        <View style={styles.statusContainer}>
-          <Ionicons
-            name={item.status === "Lunas" ? "checkmark-circle" : "alert-circle"}
-            size={16}
-            color={item.status === "Lunas" ? "#2ECC71" : "#E74C3C"}
-            style={{ marginRight: 4 }}
-          />
-          <Text
-            style={[
-              styles.statusText,
-              { color: item.status === "Lunas" ? "#2ECC71" : "#E74C3C" },
-            ]}
-          >
-            {item.status}
-          </Text>
+        {/* Content Center */}
+        <View style={styles.cardContent}>
+          <Text style={styles.cardTitle}>{item.namaTagihan}</Text>
+          <Text style={styles.dateText}>{item.tanggalJatuhTempo || "27/10/2025"}</Text>
+        </View>
+
+        {/* Status & Amount Right */}
+        <View style={styles.rightSection}>
+          <View style={[
+            styles.statusBadge,
+            { backgroundColor: item.status === "Lunas" ? "#00B050" : "#B71C1C" }
+          ]}>
+            <Text style={styles.statusText}>{item.status}</Text>
+          </View>
+          <Text style={styles.amountText}>Rp {formatNominal(item.nominal)}</Text>
         </View>
       </View>
       
+      {/* Tombol Bayar Sekarang */}
       {item.status === "Belum Lunas" && (
-        <TouchableOpacity 
-          style={styles.bayarButton}
-          onPress={() => handleBayar(item.idTagihan)}
-        >
-          <Text style={styles.bayarButtonText}>Bayar Sekarang</Text>
-        </TouchableOpacity>
+        <View style={styles.bayarButtonContainer}>
+          <TouchableOpacity 
+            style={styles.bayarButton}
+            onPress={() => handleBayar(item.idTagihan)}
+          >
+            <Text style={styles.bayarButtonText}>Bayar Sekarang</Text>
+          </TouchableOpacity>
+        </View>
       )}
     </View>
   );
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#2691B5" />
+      <StatusBar barStyle="dark-content" backgroundColor="#F9FCFF" />
 
       {/* Header */}
       <View style={styles.header}>
@@ -146,16 +180,14 @@ export default function TagihanScreen() {
           style={styles.filterButton}
           onPress={() => setFilterModalVisible(true)}
         >
-          <Ionicons name="filter" size={20} color="#2691B5" />
           <Text style={styles.filterText}>Filter</Text>
+          <Ionicons name="chevron-down" size={14} color="#0A0A0A" style={{ marginLeft: 4 }} />
         </TouchableOpacity>
       </View>
 
-      {/* Filter Info */}
-      <View style={styles.filterInfo}>
-        <Text style={styles.filterInfoText}>
-          Filter: {selectedFilter}
-        </Text>
+      {/* Background Accent */}
+      <View style={styles.backgroundAccent}>
+        <Ionicons name="flower" size={200} color="#2691B5" style={{ opacity: 0.15 }} />
       </View>
 
       {/* Daftar Tagihan */}
@@ -173,6 +205,7 @@ export default function TagihanScreen() {
           contentContainerStyle={styles.listContent}
         />
       )}
+
 
       {/* Filter Modal */}
       <Modal
@@ -222,122 +255,166 @@ export default function TagihanScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#F9FCFF",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#F9FCFF",
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
     color: "#666",
+    fontFamily: "Poppins",
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: "#FFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E5E5",
+    paddingTop: 20,
+    paddingBottom: 16,
+    backgroundColor: "#F9FCFF",
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#2691B5",
+    fontFamily: "Poppins",
+    textAlign: "center",
+    flex: 1,
   },
   filterButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#2691B5",
+    position: "absolute",
+    right: 20,
   },
   filterText: {
     fontSize: 14,
-    color: "#2691B5",
-    fontWeight: "500",
-    marginLeft: 4,
+    color: "#0A0A0A",
+    fontWeight: "400",
+    fontFamily: "Poppins",
   },
-  filterInfo: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    backgroundColor: "#E3F2FD",
-  },
-  filterInfoText: {
-    fontSize: 14,
-    color: "#2691B5",
-    fontWeight: "500",
+  backgroundAccent: {
+    position: "absolute",
+    bottom: 150,
+    left: "50%",
+    marginLeft: -100,
+    zIndex: -1,
   },
   listContent: {
-    padding: 16,
+    padding: 20,
+    paddingBottom: 100,
   },
   card: {
-    backgroundColor: "#FFF",
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
-    padding: 16,
+    borderWidth: 1,
+    borderColor: "#2691B5",
+    padding: 12,
     marginBottom: 12,
     shadowColor: "#000",
     shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
     elevation: 2,
-    borderLeftWidth: 4,
-    borderLeftColor: "#2691B5",
   },
-  cardHeader: {
+  cardLayout: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 12,
+    alignItems: "center",
   },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    flex: 1,
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#2691B5",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
   },
-  dateText: {
-    fontSize: 14,
-    color: "#777",
-    marginLeft: 8,
+  bellIcon: {
+    position: "relative",
+    width: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  bellBody: {
+    width: 14,
+    height: 14,
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    borderRadius: 7,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    backgroundColor: "transparent",
+  },
+  bellBottom: {
+    width: 16,
+    height: 3,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 1.5,
+    marginTop: -1,
   },
   cardContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
+    flex: 1,
   },
-  amountText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#2C3E50",
+  cardTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#2691B5",
+    fontFamily: "Poppins",
+    marginBottom: 2,
   },
-  statusContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+  dateText: {
+    fontSize: 12,
+    color: "#8E8E8E",
+    fontWeight: "400",
+    fontFamily: "Poppins",
+  },
+  rightSection: {
+    alignItems: "flex-end",
+  },
+  statusBadge: {
+    borderRadius: 20,
+    paddingVertical: 2,
+    paddingHorizontal: 10,
+    marginBottom: 4,
   },
   statusText: {
-    fontSize: 14,
+    fontSize: 11,
+    color: "#FFFFFF",
     fontWeight: "500",
+    fontFamily: "Poppins",
+  },
+  amountText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#0A0A0A",
+    fontFamily: "Poppins",
+  },
+  bayarButtonContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#E5E5E5",
   },
   bayarButton: {
     backgroundColor: "#2691B5",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
-    alignSelf: "flex-end",
-    marginTop: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
   },
   bayarButtonText: {
-    color: "#FFF",
+    color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "600",
+    fontFamily: "Poppins",
   },
   emptyState: {
     alignItems: "center",
@@ -350,6 +427,35 @@ const styles = StyleSheet.create({
     color: "#999",
     marginTop: 16,
     textAlign: "center",
+    fontFamily: "Poppins",
+  },
+  bottomNav: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 72,
+    backgroundColor: "#FFFFFF",
+    borderTopWidth: 1,
+    borderTopColor: "#E5E5E5",
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+    paddingBottom: 8,
+  },
+  navItem: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  navLabel: {
+    fontSize: 11,
+    color: "#9CA3AF",
+    marginTop: 4,
+    fontFamily: "Poppins",
+    fontWeight: "500",
+  },
+  navLabelActive: {
+    color: "#2691B5",
   },
   modalContainer: {
     flex: 1,
@@ -370,6 +476,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: "center",
     color: "#333",
+    fontFamily: "Poppins",
   },
   filterOption: {
     flexDirection: "row",
@@ -386,6 +493,7 @@ const styles = StyleSheet.create({
   filterOptionText: {
     fontSize: 16,
     color: "#333",
+    fontFamily: "Poppins",
   },
   filterOptionTextSelected: {
     color: "#2691B5",
@@ -402,5 +510,6 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "600",
+    fontFamily: "Poppins",
   },
 });

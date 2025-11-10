@@ -11,49 +11,125 @@ import {
   Image,
   Modal,
   TextInput,
+  Animated,
+  Easing
 } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
+<<<<<<< HEAD:src/screens/LihatTabunganScreen.jsx
 import api from "../api/apiClient";
+=======
+import { BASE_URL } from "../../../api/apiClient";
+import { RewardAnimation } from "../../../components/RewardAnimation";
+>>>>>>> 920285b9a195a19258e7dbb97f35db3dfd3942e7:src/screens/user/Tabungan/LihatTabunganScreen.jsx
 
 export default function LihatTabunganScreen({ navigation }) {
   const [tabunganList, setTabunganList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState("semua"); // semua atau selesai
+  const [filter, setFilter] = useState("semua");
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedTabungan, setSelectedTabungan] = useState(null);
   const [nominalInput, setNominalInput] = useState("");
+  const [userId, setUserId] = useState(null);
+  
+  // State untuk animasi reward
+  const [showRewardAnimation, setShowRewardAnimation] = useState(false);
+  const [rewardType, setRewardType] = useState('poin');
+  const [rewardMessage, setRewardMessage] = useState('');
+  const [currentPoin, setCurrentPoin] = useState(0);
+  const [currentMedali, setCurrentMedali] = useState(0);
+
+  useEffect(() => {
+    getUserId();
+  }, []);
+
+  useEffect(() => {
+    if (userId) {
+      fetchTabungan();
+      fetchRewardData();
+    }
+  }, [userId]);
+
+  const getUserId = async () => {
+    try {
+      const userData = await AsyncStorage.getItem("userData");
+      if (userData) {
+        const user = JSON.parse(userData);
+        setUserId(user.idPengguna || user.id);
+      }
+    } catch (error) {
+      console.error("Error getting user data:", error);
+    }
+  };
 
   // Fetch data tabungan
   const fetchTabungan = async () => {
+    if (!userId) {
+      console.log("User ID not available");
+      return;
+    }
+
     try {
+<<<<<<< HEAD:src/screens/LihatTabunganScreen.jsx
       const idPengguna = 1; // Ganti dengan ID user yang login dari AsyncStorage
       const response = await api.get(`/target-tabungan/pengguna/${idPengguna}`);
+=======
+      const response = await axios.get(
+        `${BASE_URL}/target-tabungan/pengguna/${userId}`
+      );
+>>>>>>> 920285b9a195a19258e7dbb97f35db3dfd3942e7:src/screens/user/Tabungan/LihatTabunganScreen.jsx
 
       if (response.data) {
         setTabunganList(response.data);
       }
     } catch (error) {
       console.error("Error fetching tabungan:", error);
+<<<<<<< HEAD:src/screens/LihatTabunganScreen.jsx
       Alert.alert(
         "Error",
         "Gagal memuat data tabungan. Periksa koneksi internet dan pastikan server aktif."
       );
+=======
+      Alert.alert("Error", "Gagal memuat data tabungan.");
+>>>>>>> 920285b9a195a19258e7dbb97f35db3dfd3942e7:src/screens/user/Tabungan/LihatTabunganScreen.jsx
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  useEffect(() => {
-    fetchTabungan();
-  }, []);
+  // Fetch data reward
+  const fetchRewardData = async () => {
+    if (!userId) return;
+
+    try {
+      const token = await AsyncStorage.getItem("jwtToken");
+      const response = await axios.get(
+        `${BASE_URL}/reward-gamification/${userId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.data && response.data.code === 200) {
+        const rewardInfo = response.data.data;
+        setCurrentPoin(rewardInfo.poin || 0);
+        setCurrentMedali(rewardInfo.medali || 0);
+      }
+    } catch (error) {
+      console.error("Error fetching reward data:", error);
+    }
+  };
 
   // Refresh data
   const onRefresh = () => {
     setRefreshing(true);
     fetchTabungan();
+    fetchRewardData();
   };
 
   // Filter data berdasarkan status
@@ -105,7 +181,7 @@ export default function LihatTabunganScreen({ navigation }) {
     setModalVisible(true);
   };
 
-  // Tambah nominal tabungan
+  // Tambah nominal tabungan dengan animasi reward
   const handleTambahNominal = async () => {
     if (!nominalInput || nominalInput === "0") {
       Alert.alert("Error", "Masukkan nominal yang valid");
@@ -120,8 +196,17 @@ export default function LihatTabunganScreen({ navigation }) {
     }
 
     try {
+<<<<<<< HEAD:src/screens/LihatTabunganScreen.jsx
       const response = await api.put(
         `/target-tabungan/${selectedTabungan.idTarget}/tambah?nominal=${nominal}`
+=======
+      // Simpan state sebelum update
+      const previousPoin = currentPoin;
+      const previousMedali = currentMedali;
+
+      const response = await axios.put(
+        `${BASE_URL}/target-tabungan/${selectedTabungan.idTarget}/tambah?nominal=${nominal}`
+>>>>>>> 920285b9a195a19258e7dbb97f35db3dfd3942e7:src/screens/user/Tabungan/LihatTabunganScreen.jsx
       );
 
       if (response.data && response.data.code === 200) {
@@ -130,6 +215,7 @@ export default function LihatTabunganScreen({ navigation }) {
         const isCompleted = newNominal >= selectedTabungan.targetNominal;
 
         setModalVisible(false);
+<<<<<<< HEAD:src/screens/LihatTabunganScreen.jsx
 
         if (isCompleted) {
           Alert.alert(
@@ -148,11 +234,78 @@ export default function LihatTabunganScreen({ navigation }) {
         "Error",
         "Gagal menambah nominal. Periksa:\n• Koneksi internet\n• Server aktif\n• IP address server"
       );
+=======
+        
+        // Trigger animasi reward
+        await triggerRewardAnimation(isCompleted, previousPoin, previousMedali);
+        
+        // Refresh data
+        fetchTabungan();
+        fetchRewardData();
+      }
+    } catch (error) {
+      console.error("Error tambah nominal:", error);
+      Alert.alert("Error", "Gagal menambah nominal.");
+>>>>>>> 920285b9a195a19258e7dbb97f35db3dfd3942e7:src/screens/user/Tabungan/LihatTabunganScreen.jsx
     }
+  };
+
+  // Fungsi untuk trigger animasi reward
+  const triggerRewardAnimation = async (isTargetCompleted, previousPoin, previousMedali) => {
+    try {
+      // Fetch data reward terbaru
+      const token = await AsyncStorage.getItem("jwtToken");
+      const rewardResponse = await axios.get(
+        `${BASE_URL}/reward-gamification/${userId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      if (rewardResponse.data && rewardResponse.data.code === 200) {
+        const currentReward = rewardResponse.data.data;
+        const updatedPoin = currentReward.poin || 0;
+        const updatedMedali = currentReward.medali || 0;
+
+        // Cek apakah dapat medali baru (poin mencapai kelipatan 300)
+        const gotNewMedal = Math.floor(updatedPoin / 300) > Math.floor(previousPoin / 300);
+        
+        if (gotNewMedal) {
+          // Animasi medali
+          setRewardType('medal');
+          setRewardMessage(`Selamat! Kamu dapat medali baru! 🏅\nTotal ${updatedMedali} medali terkumpul!\nTeruskan perjalanan menabungmu!`);
+          setShowRewardAnimation(true);
+        } else if (isTargetCompleted) {
+          // Animasi target selesai + poin
+          setRewardType('poin');
+          setRewardMessage(`Luar biasa! Target "${selectedTabungan.namaTarget}" berhasil tercapai! 🎊\nKamu dapat 30 poin!`);
+          setShowRewardAnimation(true);
+        } else {
+          // Animasi poin biasa
+          setRewardType('poin');
+          setRewardMessage(`Yeay! Berhasil menabung ${formatCurrency(parseFloat(nominalInput.replace(/\./g, "")))}! 💰\nKamu dapat 30 poin!`);
+          setShowRewardAnimation(true);
+        }
+      }
+    } catch (error) {
+      console.error("Error checking reward:", error);
+      // Fallback animation
+      setRewardType('poin');
+      setRewardMessage(`Berhasil menabung! 🎉\nKamu dapat 30 poin!`);
+      setShowRewardAnimation(true);
+    }
+  };
+
+  // Handler ketika animasi selesai
+  const handleAnimationComplete = () => {
+    setShowRewardAnimation(false);
   };
 
   // Hapus tabungan
   const handleDelete = (id, nama) => {
+<<<<<<< HEAD:src/screens/LihatTabunganScreen.jsx
     Alert.alert("Hapus Tabungan", `Yakin ingin menghapus "${nama}"?`, [
       { text: "Batal", style: "cancel" },
       {
@@ -165,6 +318,29 @@ export default function LihatTabunganScreen({ navigation }) {
             if (response.data && response.data.code === 200) {
               Alert.alert("Sukses", "Tabungan berhasil dihapus");
               fetchTabungan();
+=======
+    Alert.alert(
+      "Hapus Tabungan",
+      `Yakin ingin menghapus "${nama}"?`,
+      [
+        { text: "Batal", style: "cancel" },
+        {
+          text: "Hapus",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const response = await axios.delete(
+                `${BASE_URL}/target-tabungan/${id}`
+              );
+              
+              if (response.data && response.data.code === 200) {
+                Alert.alert("Sukses", "Tabungan berhasil dihapus");
+                fetchTabungan();
+              }
+            } catch (error) {
+              console.error("Error delete:", error);
+              Alert.alert("Error", "Gagal menghapus tabungan");
+>>>>>>> 920285b9a195a19258e7dbb97f35db3dfd3942e7:src/screens/user/Tabungan/LihatTabunganScreen.jsx
             }
           } catch (error) {
             console.error("Error delete:", error);
@@ -173,6 +349,37 @@ export default function LihatTabunganScreen({ navigation }) {
         },
       },
     ]);
+  };
+
+  // Komponen Progress Bar dengan Animasi
+  const AnimatedProgressBar = ({ progress, isCompleted }) => {
+    const [animatedProgress] = useState(new Animated.Value(0));
+
+    useEffect(() => {
+      Animated.timing(animatedProgress, {
+        toValue: progress,
+        duration: 1000,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: false,
+      }).start();
+    }, [progress]);
+
+    return (
+      <View style={styles.progressBarContainer}>
+        <Animated.View 
+          style={[
+            styles.progressBar,
+            { 
+              width: animatedProgress.interpolate({
+                inputRange: [0, 100],
+                outputRange: ['0%', '100%']
+              })
+            },
+            isCompleted && styles.progressBarCompleted
+          ]} 
+        />
+      </View>
+    );
   };
 
   // Render item tabungan
@@ -231,6 +438,7 @@ export default function LihatTabunganScreen({ navigation }) {
               {progress.toFixed(1)}%
             </Text>
           </View>
+<<<<<<< HEAD:src/screens/LihatTabunganScreen.jsx
           <View style={styles.progressBarContainer}>
             <View
               style={[
@@ -240,6 +448,9 @@ export default function LihatTabunganScreen({ navigation }) {
               ]}
             />
           </View>
+=======
+          <AnimatedProgressBar progress={progress} isCompleted={isCompleted} />
+>>>>>>> 920285b9a195a19258e7dbb97f35db3dfd3942e7:src/screens/user/Tabungan/LihatTabunganScreen.jsx
         </View>
 
         {/* Nominal Info */}
@@ -327,6 +538,15 @@ export default function LihatTabunganScreen({ navigation }) {
     );
   };
 
+  if (loading && !userId) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#2691B5" />
+        <Text style={styles.loadingText}>Memuat data pengguna...</Text>
+      </View>
+    );
+  }
+
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -342,7 +562,16 @@ export default function LihatTabunganScreen({ navigation }) {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Tabungan Saya 💰</Text>
         <Text style={styles.headerSubtitle}>Ayo capai target menabungmu!</Text>
+        <Text style={styles.userInfoText}></Text>
       </View>
+
+      {/* Animasi Reward */}
+      <RewardAnimation
+        type={rewardType}
+        isVisible={showRewardAnimation}
+        onComplete={handleAnimationComplete}
+        message={rewardMessage}
+      />
 
       {/* Filter Tabs */}
       <View style={styles.filterContainer}>
@@ -468,6 +697,14 @@ export default function LihatTabunganScreen({ navigation }) {
                   </Text>
                 </View>
 
+                {/* Info Reward */}
+                <View style={styles.rewardInfoBox}>
+                  <Ionicons name="gift-outline" size={20} color="#F59E0B" />
+                  <Text style={styles.rewardInfoText}>
+                    Dapatkan <Text style={styles.rewardHighlight}>30 poin</Text> setiap menabung!
+                  </Text>
+                </View>
+
                 <View style={styles.modalInputWrapper}>
                   <Text style={styles.modalInputLabel}>Nominal Tambahan</Text>
                   <View style={styles.modalInput}>
@@ -497,6 +734,7 @@ export default function LihatTabunganScreen({ navigation }) {
                     style={styles.modalSaveBtn}
                     onPress={handleTambahNominal}
                   >
+                    <Ionicons name="add-circle" size={20} color="#fff" />
                     <Text style={styles.modalSaveText}>Tambah Saldo 💸</Text>
                   </TouchableOpacity>
                 </View>
@@ -544,6 +782,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "500",
     color: "#E0F2FE",
+  },
+  userInfoText: {
+    fontSize: 12,
+    color: "#E0F2FE",
+    marginTop: 5,
   },
   filterContainer: {
     flexDirection: "row",
@@ -924,6 +1167,26 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#1E293B",
   },
+  rewardInfoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFBEB',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: '#FDE68A',
+    gap: 8,
+  },
+  rewardInfoText: {
+    fontSize: 14,
+    color: '#92400E',
+    flex: 1,
+  },
+  rewardHighlight: {
+    fontWeight: 'bold',
+    color: '#F59E0B',
+  },
   modalInputWrapper: {
     marginTop: 20,
     marginBottom: 25,
@@ -976,6 +1239,10 @@ const styles = StyleSheet.create({
   },
   modalSaveBtn: {
     flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
     paddingVertical: 16,
     borderRadius: 15,
     backgroundColor: "#2691B5",

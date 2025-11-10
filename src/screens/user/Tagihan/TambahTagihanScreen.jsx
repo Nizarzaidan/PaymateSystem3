@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,11 +8,18 @@ import {
   ScrollView,
   Switch,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import api from "../api/apiClient";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { LinearGradient } from "expo-linear-gradient";
+<<<<<<< HEAD:src/screens/TambahTagihanScreen.jsx
+=======
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+import { BASE_URL } from "../../../api/apiClient";
+>>>>>>> 920285b9a195a19258e7dbb97f35db3dfd3942e7:src/screens/user/Tagihan/TambahTagihanScreen.jsx
 
 export default function TambahTagihanScreen({ navigation }) {
   const [namaTagihan, setNamaTagihan] = useState("");
@@ -21,6 +28,31 @@ export default function TambahTagihanScreen({ navigation }) {
   const [catatan, setCatatan] = useState("");
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isBerkala, setIsBerkala] = useState(false);
+  const [userId, setUserId] = useState(null);
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    getUserData();
+  }, []);
+
+  const getUserData = async () => {
+    try {
+      const storedUserData = await AsyncStorage.getItem("userData");
+      if (storedUserData) {
+        const user = JSON.parse(storedUserData);
+        console.log("👤 User data loaded:", user);
+        setUserId(user.idPengguna || user.id);
+        setUserData(user);
+      } else {
+        console.log("❌ No user data found");
+        Alert.alert("Error", "Silakan login kembali");
+        navigation.goBack();
+      }
+    } catch (error) {
+      console.error("❌ Error getting user data:", error);
+    }
+  };
 
   const handleDateChange = (event, selectedDate) => {
     setShowDatePicker(false);
@@ -31,18 +63,24 @@ export default function TambahTagihanScreen({ navigation }) {
   };
 
   const handleSave = async () => {
+    if (!userId) {
+      Alert.alert("Error", "User ID tidak ditemukan. Silakan login kembali.");
+      return;
+    }
+
     if (!namaTagihan || !nominalTagihan || !tanggalPelunasan) {
       Alert.alert("Validasi", "Harap isi semua field wajib!");
       return;
     }
 
     try {
+      setLoading(true);
       const tipePerulangan = isBerkala ? "bulanan" : "tidak_berulang";
       const statusTagihan = "Belum Lunas"; // Default status
 
       // ✅ Tambahkan catatan ke payload
       const payload = {
-        pengguna: { idPengguna: 1 },
+        pengguna: { idPengguna: userId },
         namaTagihan: namaTagihan.trim(),
         nominal: parseFloat(nominalTagihan.replace(/\./g, "")),
         tanggalJatuhTempo: tanggalPelunasan,
@@ -52,9 +90,17 @@ export default function TambahTagihanScreen({ navigation }) {
         catatan: catatan.trim(),
       };
 
+<<<<<<< HEAD:src/screens/TambahTagihanScreen.jsx
       const response = await api.post("/tagihan", payload, {
         headers: { "Content-Type": "application/json" },
       });
+=======
+      const response = await axios.post(
+        `${BASE_URL}/tagihan`,
+        payload,
+        { headers: { "Content-Type": "application/json" } }
+      );
+>>>>>>> 920285b9a195a19258e7dbb97f35db3dfd3942e7:src/screens/user/Tagihan/TambahTagihanScreen.jsx
 
       if (response.status === 200 || response.status === 201) {
         Alert.alert("Sukses ✅", "Tagihan berhasil disimpan!");
@@ -70,8 +116,21 @@ export default function TambahTagihanScreen({ navigation }) {
     } catch (error) {
       console.error("❌ Error saat simpan tagihan:", error);
       Alert.alert("Koneksi Gagal", "Tidak dapat terhubung ke server backend.");
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (!userId) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2691B5" />
+        <Text style={{ marginTop: 10, color: "#6B7280" }}>
+          Memuat data pengguna...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <LinearGradient
@@ -82,6 +141,11 @@ export default function TambahTagihanScreen({ navigation }) {
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
+<<<<<<< HEAD:src/screens/TambahTagihanScreen.jsx
+=======
+
+
+>>>>>>> 920285b9a195a19258e7dbb97f35db3dfd3942e7:src/screens/user/Tagihan/TambahTagihanScreen.jsx
         {/* Form Input */}
         <View style={styles.formBox}>
           <Text style={styles.label}>Nama Tagihan *</Text>
@@ -159,8 +223,24 @@ export default function TambahTagihanScreen({ navigation }) {
         </View>
 
         {/* Tombol Simpan */}
+<<<<<<< HEAD:src/screens/TambahTagihanScreen.jsx
         <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
           <Text style={styles.saveButtonText}>Simpan Tagihan</Text>
+=======
+        <TouchableOpacity 
+          style={[
+            styles.saveButton, 
+            loading && styles.saveButtonDisabled
+          ]} 
+          onPress={handleSave}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.saveButtonText}>Simpan Tagihan</Text>
+          )}
+>>>>>>> 920285b9a195a19258e7dbb97f35db3dfd3942e7:src/screens/user/Tagihan/TambahTagihanScreen.jsx
         </TouchableOpacity>
       </ScrollView>
     </LinearGradient>
@@ -173,6 +253,30 @@ const styles = StyleSheet.create({
   },
   container: {
     padding: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+  userInfo: {
+    backgroundColor: "#EFF6FF",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: "#2691B5",
+  },
+  userInfoText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#2691B5",
+  },
+  userIdText: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginTop: 4,
   },
   header: {
     flexDirection: "row",
@@ -244,6 +348,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
     marginBottom: 30,
+  },
+  saveButtonDisabled: {
+    backgroundColor: "#9CA3AF",
   },
   saveButtonText: {
     color: "#fff",
