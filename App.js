@@ -1,6 +1,7 @@
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
+import { TabunganProvider } from './src/contexts/TabunganContext';
 //tampilan awal
 import SplashScreen1 from "./src/screens/auth/SplashScreen1";
 import SplashScreenGrow from "./src/screens/auth/SplashScreenGrow";
@@ -15,17 +16,23 @@ import Dashboard from "./src/screens/user/dashboard/Dashboard";
 import TambahTransaksi from "./src/screens/user/Transaksi/TambahTransaksi";
 import TabunganScreen from "./src/screens/user/Tabungan/TabunganScreen";
 import LihatTabunganScreen from "./src/screens/user/Tabungan/LihatTabunganScreen"; // BARU
+import EditTabunganScreen from "./src/screens/user/Tabungan/EditTabunganScreen"; // BARU
+import SampahTabunganScreen from "./src/screens/user/Tabungan/SampahTabunganScreen"; // BARU
 import TambahTagihanScreen from "./src/screens/user/Tagihan/TambahTagihanScreen";
 import TagihanScreen from "./src/screens/user/Tagihan/TagihanScreen";
+import EditTagihanScreen from "./src/screens/user/Tagihan/EditTagihanScreen";
 import RiwayatScreen from "./src/screens/user/Transaksi/RiwayatScreen";
 import ProfileScreen from "./src/screens/user/Profile/ProfileScreen";
 import KelolaAkun from "./src/screens/user/Profile/KelolaAkun";
+import LeaderboardScreen from "./src/screens/user/Profile/LeaderboardScreen";
 import KelolaKategori from "./src/screens/user/Profile/KelolaKategori";
 import RewardTarget from "./src/screens/user/Profile/RewardTarget";
+import SampahTagihanScreen from "./src/screens/user/Tagihan/SampahTagihanScreen";
 const Stack = createStackNavigator();
 
 export default function App() {
   return (
+    <TabunganProvider>
     <NavigationContainer>
       <Stack.Navigator
         initialRouteName="Splash1"
@@ -59,9 +66,26 @@ export default function App() {
           component={LihatTabunganScreen}
           options={{ title: "Daftar Tabungan" }}
         />
+        {/* ROUTE BARU */}
+        <Stack.Screen
+          name="EditTabunganScreen"
+          component={EditTabunganScreen}
+          options={{ title: "Edit Tabungan" }}
+        />
+         {/* ROUTE BARU */}
+        <Stack.Screen
+          name="SampahTabunganScreen"
+          component={SampahTabunganScreen}
+          options={{ title: "Sampah Tabungan" }}
+        />
         <Stack.Screen 
           name="ProfileScreen" 
           component={ProfileScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="LeaderboardScreen" 
+          component={LeaderboardScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen
@@ -74,6 +98,16 @@ export default function App() {
           component={TagihanScreen}
           options={{ title: "Tagihan" }}
         />
+        <Stack.Screen
+          name="EditTagihanScreen"
+          component={EditTagihanScreen}
+          options={{ title: "Edit Tagihan" }}
+        />
+        <Stack.Screen
+  name="SampahTagihanScreen"
+  component={SampahTagihanScreen}
+  options={{ headerShown: false }}
+/>
         <Stack.Screen
           name="RiwayatScreen"
           component={RiwayatScreen}
@@ -96,5 +130,6 @@ export default function App() {
         />
       </Stack.Navigator>
     </NavigationContainer>
+    </TabunganProvider>
   );
 }

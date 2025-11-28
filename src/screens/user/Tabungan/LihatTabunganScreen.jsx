@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -19,72 +19,60 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { BASE_URL } from "../../../api/apiClient";
 import { RewardAnimation } from "../../../components/RewardAnimation";
+import { useTabungan } from "../../../contexts/TabunganContext";
+import { useFocusEffect } from "@react-navigation/native";
 
 export default function LihatTabunganScreen({ navigation }) {
-  const [tabunganList, setTabunganList] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { 
+    tabunganList, 
+    loading, 
+    userId,
+    initializeUser,
+    fetchTabungan,
+    addNominalToTabungan,
+    softDeleteTabungan,
+    calculateProgress,
+    isTargetCompleted
+  } = useTabungan();
+
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState("semua");
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedTabungan, setSelectedTabungan] = useState(null);
   const [nominalInput, setNominalInput] = useState("");
-  const [userId, setUserId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
   
-  // State untuk animasi reward
+  // Reward states
   const [showRewardAnimation, setShowRewardAnimation] = useState(false);
   const [rewardType, setRewardType] = useState('poin');
   const [rewardMessage, setRewardMessage] = useState('');
   const [currentPoin, setCurrentPoin] = useState(0);
   const [currentMedali, setCurrentMedali] = useState(0);
 
+  // Track which targets have already shown reward (prevent double popup)
+  const rewardShownRef = useRef(new Set());
+
+  // Initialize on mount
   useEffect(() => {
-    getUserId();
+    const init = async () => {
+      if (!userId) {
+        await initializeUser();
+      }
+    };
+    init();
   }, []);
 
-  useEffect(() => {
-    if (userId) {
-      fetchTabungan();
-      fetchRewardData();
-    }
-  }, [userId]);
-
-  const getUserId = async () => {
-    try {
-      const userData = await AsyncStorage.getItem("userData");
-      if (userData) {
-        const user = JSON.parse(userData);
-        setUserId(user.idPengguna || user.id);
+  // Fetch data when screen focused
+  useFocusEffect(
+    React.useCallback(() => {
+      if (userId) {
+        fetchTabungan();
+        fetchRewardData();
       }
-    } catch (error) {
-      console.error("Error getting user data:", error);
-    }
-  };
+    }, [userId])
+  );
 
-  // Fetch data tabungan
-  const fetchTabungan = async () => {
-    if (!userId) {
-      console.log("User ID not available");
-      return;
-    }
-
-    try {
-      const response = await axios.get(
-        `${BASE_URL}/target-tabungan/pengguna/${userId}`
-      );
-
-      if (response.data) {
-        setTabunganList(response.data);
-      }
-    } catch (error) {
-      console.error("Error fetching tabungan:", error);
-      Alert.alert("Error", "Gagal memuat data tabungan.");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  // Fetch data reward
+  // Fetch reward data
   const fetchRewardData = async () => {
     if (!userId) return;
 
@@ -110,27 +98,42 @@ export default function LihatTabunganScreen({ navigation }) {
   };
 
   // Refresh data
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    fetchTabungan();
-    fetchRewardData();
-  };
-
-  // Filter data berdasarkan status
-  const getFilteredData = () => {
-    if (filter === "semua") {
-      return tabunganList;
-    } else if (filter === "selesai") {
-      return tabunganList.filter((item) => item.status === "selesai");
+    try {
+      await fetchTabungan();
+      await fetchRewardData();
+    } finally {
+      setRefreshing(false);
     }
-    return tabunganList;
   };
 
-  // Hitung persentase progress
-  const calculateProgress = (nominalSekarang, targetNominal) => {
-    if (targetNominal <= 0) return 0;
-    const progress = (nominalSekarang / targetNominal) * 100;
-    return Math.min(progress, 100);
+  // Sort data - data baru di atas berdasarkan tanggal dibuat
+  const getSortedData = () => {
+    return [...tabunganList].sort((a, b) => {
+      return new Date(b.tanggalDibuat || b.tanggalMulai) - new Date(a.tanggalDibuat || a.tanggalMulai);
+    });
+  };
+
+  // Filter and search data
+  const getFilteredData = () => {
+    let data = getSortedData();
+
+    // Apply filter
+    if (filter === "selesai") {
+      data = data.filter((item) => item.status === "selesai");
+    }
+
+    // Apply search
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      data = data.filter((item) => 
+        item.namaTarget.toLowerCase().includes(query) ||
+        (item.catatan && item.catatan.toLowerCase().includes(query))
+      );
+    }
+
+    return data;
   };
 
   // Format currency
@@ -143,7 +146,7 @@ export default function LihatTabunganScreen({ navigation }) {
     }).format(value);
   };
 
-  // Format tanggal
+  // Format date
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("id-ID", {
@@ -158,49 +161,145 @@ export default function LihatTabunganScreen({ navigation }) {
     return value.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   };
 
-  // Buka modal tambah nominal
+  // Parse currency input to number
+  const parseCurrencyInput = (value) => {
+    return parseInt(value.replace(/\./g, "")) || 0;
+  };
+
+  // Calculate maximum allowed nominal
+  const calculateMaxNominal = (tabungan) => {
+    if (!tabungan) return 0;
+    const sisa = tabungan.targetNominal - tabungan.nominalSekarang;
+    return Math.max(0, sisa);
+  };
+
+  // Validate nominal input
+  const validateNominalInput = (input, tabungan) => {
+    if (!input || input === "0") {
+      return { isValid: false, message: "Masukkan nominal yang valid" };
+    }
+
+    const nominal = parseCurrencyInput(input);
+    
+    if (isNaN(nominal) || nominal <= 0) {
+      return { isValid: false, message: "Nominal harus lebih dari 0" };
+    }
+
+    // Check if exceeds target
+    const maxAllowed = calculateMaxNominal(tabungan);
+    if (nominal > maxAllowed) {
+      return { 
+        isValid: false, 
+        message: `Nominal melebihi target!\n\nMaksimal yang bisa ditambahkan: ${formatCurrency(maxAllowed)}` 
+      };
+    }
+
+    return { isValid: true, message: "" };
+  };
+
+  // Open modal
   const openTambahModal = (item) => {
+    // Check if already completed (100%)
+    if (isTargetCompleted(item)) {
+      Alert.alert(
+        "Target Sudah Selesai",
+        "Tabungan ini sudah mencapai 100%. Tidak dapat menambah nominal lagi.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
     setSelectedTabungan(item);
     setNominalInput("");
     setModalVisible(true);
   };
 
-  // Tambah nominal tabungan dengan animasi reward
+  // Handle input change with validation
+  const handleInputChange = (text) => {
+    const formattedText = formatInputCurrency(text);
+    setNominalInput(formattedText);
+
+    // Real-time validation feedback
+    if (selectedTabungan && formattedText) {
+      const validation = validateNominalInput(formattedText, selectedTabungan);
+      if (!validation.isValid) {
+        // You can add visual feedback here if needed
+      }
+    }
+  };
+
+  // Add nominal with ONE-TIME reward validation
   const handleTambahNominal = async () => {
-    if (!nominalInput || nominalInput === "0") {
-      Alert.alert("Error", "Masukkan nominal yang valid");
+    if (!selectedTabungan) return;
+
+    const validation = validateNominalInput(nominalInput, selectedTabungan);
+    if (!validation.isValid) {
+      Alert.alert("Error", validation.message);
       return;
     }
 
-    const nominal = parseFloat(nominalInput.replace(/\./g, ""));
+    const nominal = parseCurrencyInput(nominalInput);
     
-    if (isNaN(nominal) || nominal <= 0) {
-      Alert.alert("Error", "Nominal harus lebih dari 0");
-      return;
-    }
-
     try {
-      // Simpan state sebelum update
-      const previousPoin = currentPoin;
-      const previousMedali = currentMedali;
+      // Check if target will be completed after adding
+      const newNominal = selectedTabungan.nominalSekarang + nominal;
+      const willBeCompleted = newNominal >= selectedTabungan.targetNominal;
+      const wasAlreadyCompleted = isTargetCompleted(selectedTabungan);
 
+      // Check if reward already shown for this target
+      const rewardKey = `${selectedTabungan.idTarget}`;
+      const rewardAlreadyShown = rewardShownRef.current.has(rewardKey);
+
+      // Save previous reward state
+      const previousPoin = currentPoin;
+
+      // API call
       const response = await axios.put(
         `${BASE_URL}/target-tabungan/${selectedTabungan.idTarget}/tambah?nominal=${nominal}`
       );
 
       if (response.data && response.data.code === 200) {
-        // Cek apakah target tercapai
-        const newNominal = selectedTabungan.nominalSekarang + nominal;
-        const isCompleted = newNominal >= selectedTabungan.targetNominal;
-
+        // Update local state (real-time)
+        addNominalToTabungan(selectedTabungan.idTarget, nominal);
+        
         setModalVisible(false);
-        
-        // Trigger animasi reward
-        await triggerRewardAnimation(isCompleted, previousPoin, previousMedali);
-        
-        // Refresh data
-        fetchTabungan();
-        fetchRewardData();
+
+        // Show reward ONLY if:
+        // 1. Target just reached 100% (willBeCompleted && !wasAlreadyCompleted)
+        // 2. Reward hasn't been shown before for this target (!rewardAlreadyShown)
+        if (willBeCompleted && !wasAlreadyCompleted && !rewardAlreadyShown) {
+          // Mark reward as shown for this target
+          rewardShownRef.current.add(rewardKey);
+
+          // Trigger reward animation
+          await triggerRewardAnimation(true, previousPoin);
+          
+          Alert.alert(
+            "🎉 Selamat!",
+            `Target "${selectedTabungan.namaTarget}" berhasil tercapai 100%!\n\nKamu mendapatkan 30 poin! 🎯`,
+            [{ 
+              text: "Lanjutkan", 
+              onPress: () => {
+                fetchTabungan();
+                fetchRewardData();
+              }
+            }]
+          );
+        } else {
+          // Normal success message (no reward)
+          const progressPercent = ((newNominal / selectedTabungan.targetNominal) * 100).toFixed(1);
+          Alert.alert(
+            "✅ Berhasil!",
+            `Berhasil menabung ${formatCurrency(nominal)}!\n\nProgress: ${progressPercent}%\n\nLanjutkan menabung untuk mencapai target 100%! 💪`,
+            [{ 
+              text: "OK",
+              onPress: () => {
+                fetchTabungan();
+                fetchRewardData();
+              }
+            }]
+          );
+        }
       }
     } catch (error) {
       console.error("Error tambah nominal:", error);
@@ -208,10 +307,12 @@ export default function LihatTabunganScreen({ navigation }) {
     }
   };
 
-  // Fungsi untuk trigger animasi reward
-  const triggerRewardAnimation = async (isTargetCompleted, previousPoin, previousMedali) => {
+  // Trigger reward animation
+  const triggerRewardAnimation = async (isTargetCompleted, previousPoin) => {
+    if (!isTargetCompleted) return;
+
     try {
-      // Fetch data reward terbaru
+      // Fetch updated reward data
       const token = await AsyncStorage.getItem("jwtToken");
       const rewardResponse = await axios.get(
         `${BASE_URL}/reward-gamification/${userId}`,
@@ -227,45 +328,50 @@ export default function LihatTabunganScreen({ navigation }) {
         const updatedPoin = currentReward.poin || 0;
         const updatedMedali = currentReward.medali || 0;
 
-        // Cek apakah dapat medali baru (poin mencapai kelipatan 300)
+        // Check if got new medal (poin reached multiple of 300)
         const gotNewMedal = Math.floor(updatedPoin / 300) > Math.floor(previousPoin / 300);
         
         if (gotNewMedal) {
-          // Animasi medali
+          // Medal + points animation
           setRewardType('medal');
-          setRewardMessage(`Selamat! Kamu dapat medali baru! 🏅\nTotal ${updatedMedali} medali terkumpul!\nTeruskan perjalanan menabungmu!`);
-          setShowRewardAnimation(true);
-        } else if (isTargetCompleted) {
-          // Animasi target selesai + poin
-          setRewardType('poin');
-          setRewardMessage(`Luar biasa! Target "${selectedTabungan.namaTarget}" berhasil tercapai! 🎊\nKamu dapat 30 poin!`);
-          setShowRewardAnimation(true);
+          setRewardMessage(`🏅 Target "${selectedTabungan.namaTarget}" selesai!\n\n+30 poin + Medali baru!\nTotal ${updatedMedali} medali terkumpul! 🎊`);
         } else {
-          // Animasi poin biasa
+          // Points only animation
           setRewardType('poin');
-          setRewardMessage(`Yeay! Berhasil menabung ${formatCurrency(parseFloat(nominalInput.replace(/\./g, "")))}! 💰\nKamu dapat 30 poin!`);
-          setShowRewardAnimation(true);
+          setRewardMessage(`🎯 Target "${selectedTabungan.namaTarget}" selesai!\n\n+30 poin! Luar biasa! 🎊`);
         }
+        
+        setShowRewardAnimation(true);
       }
     } catch (error) {
       console.error("Error checking reward:", error);
       // Fallback animation
       setRewardType('poin');
-      setRewardMessage(`Berhasil menabung! 🎉\nKamu dapat 30 poin!`);
+      setRewardMessage(`🎯 Target "${selectedTabungan.namaTarget}" selesai!\n\n+30 poin! 🎊`);
       setShowRewardAnimation(true);
     }
   };
 
-  // Handler ketika animasi selesai
+  // Handle animation complete
   const handleAnimationComplete = () => {
     setShowRewardAnimation(false);
   };
 
-  // Hapus tabungan
-  const handleDelete = (id, nama) => {
+  // Delete tabungan (soft delete with real-time update)
+  const handleDelete = (id, nama, tabungan) => {
+    // Prevent delete if target is 100% completed
+    if (isTargetCompleted(tabungan)) {
+      Alert.alert(
+        "Tidak Dapat Dihapus",
+        `Tabungan "${nama}" sudah mencapai 100% dan tidak dapat dihapus.`,
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
     Alert.alert(
       "Hapus Tabungan",
-      `Yakin ingin menghapus "${nama}"?`,
+      `Yakin ingin menghapus "${nama}"?\n\nTabungan akan dipindahkan ke Sampah.`,
       [
         { text: "Batal", style: "cancel" },
         {
@@ -278,8 +384,9 @@ export default function LihatTabunganScreen({ navigation }) {
               );
               
               if (response.data && response.data.code === 200) {
-                Alert.alert("Sukses", "Tabungan berhasil dihapus");
-                fetchTabungan();
+                // Real-time update
+                softDeleteTabungan(id);
+                Alert.alert("Sukses", "Tabungan berhasil dipindahkan ke sampah");
               }
             } catch (error) {
               console.error("Error delete:", error);
@@ -291,7 +398,12 @@ export default function LihatTabunganScreen({ navigation }) {
     );
   };
 
-  // Komponen Progress Bar dengan Animasi
+  // Clear search
+  const clearSearch = () => {
+    setSearchQuery("");
+  };
+
+  // Animated Progress Bar
   const AnimatedProgressBar = ({ progress, isCompleted }) => {
     const [animatedProgress] = useState(new Animated.Value(0));
 
@@ -322,15 +434,15 @@ export default function LihatTabunganScreen({ navigation }) {
     );
   };
 
-  // Render item tabungan
+  // Render item
   const renderTabunganItem = ({ item }) => {
     const progress = calculateProgress(item.nominalSekarang, item.targetNominal);
-    const isCompleted = item.status === "selesai";
+    const isCompleted = isTargetCompleted(item);
     const sisaNominal = item.targetNominal - item.nominalSekarang;
 
     return (
       <View style={[styles.card, isCompleted && styles.cardCompleted]}>
-        {/* Header Card dengan background pattern */}
+        {/* Header */}
         <View style={styles.cardHeaderPattern}>
           <View style={styles.cardHeader}>
             <View style={styles.cardTitleRow}>
@@ -347,13 +459,13 @@ export default function LihatTabunganScreen({ navigation }) {
             {isCompleted && (
               <View style={styles.completedBadge}>
                 <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                <Text style={styles.completedText}>Selesai 🎉</Text>
+                <Text style={styles.completedText}>✅ Target Selesai</Text>
               </View>
             )}
           </View>
         </View>
 
-        {/* Foto Tabungan (jika ada) */}
+        {/* Foto */}
         {item.fotoTabungan && (
           <Image 
             source={{ uri: item.fotoTabungan }} 
@@ -362,7 +474,7 @@ export default function LihatTabunganScreen({ navigation }) {
           />
         )}
 
-        {/* Progress Bar dengan Persentase */}
+        {/* Progress */}
         <View style={styles.progressSection}>
           <View style={styles.progressHeader}>
             <Text style={styles.progressLabel}>Progress Menabung</Text>
@@ -376,7 +488,7 @@ export default function LihatTabunganScreen({ navigation }) {
           <AnimatedProgressBar progress={progress} isCompleted={isCompleted} />
         </View>
 
-        {/* Nominal Info */}
+        {/* Nominal */}
         <View style={styles.nominalSection}>
           <View style={styles.nominalBox}>
             <Text style={styles.labelText}>Terkumpul</Text>
@@ -395,8 +507,8 @@ export default function LihatTabunganScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Sisa Nominal (jika belum selesai) */}
-        {!isCompleted && (
+        {/* Sisa Nominal */}
+        {!isCompleted && sisaNominal > 0 && (
           <View style={styles.sisaBox}>
             <Ionicons name="trending-up-outline" size={18} color="#F59E0B" />
             <Text style={styles.sisaText}>
@@ -422,7 +534,7 @@ export default function LihatTabunganScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Catatan (jika ada) */}
+        {/* Catatan */}
         {item.catatan && (
           <View style={styles.catatanBox}>
             <Ionicons name="document-text-outline" size={16} color="#2691B5" />
@@ -445,8 +557,34 @@ export default function LihatTabunganScreen({ navigation }) {
           )}
           
           <TouchableOpacity
-            style={[styles.deleteBtn, !isCompleted && styles.deleteBtnSmall]}
-            onPress={() => handleDelete(item.idTarget, item.namaTarget)}
+            style={[
+              styles.editBtn, 
+              !isCompleted && styles.editBtnSmall,
+              isCompleted && styles.editBtnDisabled
+            ]}
+            onPress={() => {
+              if (isCompleted) {
+                Alert.alert(
+                  "Tidak Dapat Diedit",
+                  "Tabungan yang sudah mencapai 100% tidak dapat diedit.",
+                  [{ text: "OK" }]
+                );
+              } else {
+                navigation.navigate("EditTabunganScreen", { tabunganId: item.idTarget });
+              }
+            }}
+          >
+            <Ionicons name="create-outline" size={20} color="#fff" />
+            <Text style={styles.actionBtnText}>Edit</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.deleteBtn, 
+              !isCompleted && styles.deleteBtnSmaller,
+              isCompleted && styles.deleteBtnDisabled
+            ]}
+            onPress={() => handleDelete(item.idTarget, item.namaTarget, item)}
           >
             <Ionicons name="trash-outline" size={20} color="#fff" />
             <Text style={styles.actionBtnText}>Hapus</Text>
@@ -465,25 +603,26 @@ export default function LihatTabunganScreen({ navigation }) {
     );
   }
 
-  if (loading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#2691B5" />
-        <Text style={styles.loadingText}>Memuat data tabungan...</Text>
-      </View>
-    );
-  }
+  const filteredData = getFilteredData();
 
   return (
     <View style={styles.container}>
-      {/* Header Custom */}
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Tabungan Saya 💰</Text>
-        <Text style={styles.headerSubtitle}>Ayo capai target menabungmu!</Text>
-        <Text style={styles.userInfoText}></Text>
+        <View>
+          <Text style={styles.headerTitle}>Tabungan Saya 💰</Text>
+          <Text style={styles.headerSubtitle}>Ayo capai target menabungmu!</Text>
+        </View>
+        
+        <TouchableOpacity
+          style={styles.sampahBtn}
+          onPress={() => navigation.navigate("SampahTabunganScreen")}
+        >
+          <Ionicons name="trash-bin" size={22} color="#fff" />
+        </TouchableOpacity>
       </View>
 
-      {/* Animasi Reward */}
+      {/* Reward Animation */}
       <RewardAnimation
         type={rewardType}
         isVisible={showRewardAnimation}
@@ -491,7 +630,26 @@ export default function LihatTabunganScreen({ navigation }) {
         message={rewardMessage}
       />
 
-      {/* Filter Tabs */}
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchInputContainer}>
+          <Ionicons name="search" size={20} color="#64748B" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Cari tabungan..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor="#94A3B8"
+          />
+          {searchQuery ? (
+            <TouchableOpacity onPress={clearSearch}>
+              <Ionicons name="close-circle" size={20} color="#64748B" />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      </View>
+
+      {/* Filter */}
       <View style={styles.filterContainer}>
         <TouchableOpacity
           style={[
@@ -528,9 +686,9 @@ export default function LihatTabunganScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* List Tabungan */}
+      {/* List */}
       <FlatList
-        data={getFilteredData()}
+        data={filteredData}
         renderItem={renderTabunganItem}
         keyExtractor={(item) => item.idTarget.toString()}
         contentContainerStyle={styles.listContainer}
@@ -546,16 +704,20 @@ export default function LihatTabunganScreen({ navigation }) {
           <View style={styles.emptyContainer}>
             <MaterialIcons name="savings" size={100} color="#CBD5E1" />
             <Text style={styles.emptyTitle}>
-              {filter === "selesai" 
-                ? "Belum ada tabungan yang selesai" 
-                : "Belum ada tabungan nih! 🐷"}
+              {searchQuery 
+                ? `Tidak ditemukan tabungan "${searchQuery}"`
+                : filter === "selesai" 
+                  ? "Belum ada tabungan yang selesai" 
+                  : "Belum ada tabungan nih! 🐷"}
             </Text>
             <Text style={styles.emptySubtitle}>
-              {filter === "semua" 
-                ? "Yuk mulai menabung untuk mencapai impianmu!" 
-                : "Ayo selesaikan tabungan yang sedang berjalan!"}
+              {searchQuery
+                ? "Coba gunakan kata kunci lain atau hapus pencarian"
+                : filter === "semua" 
+                  ? "Yuk mulai menabung untuk mencapai impianmu!" 
+                  : "Ayo selesaikan tabungan yang sedang berjalan!"}
             </Text>
-            {filter === "semua" && (
+            {filter === "semua" && !searchQuery && (
               <TouchableOpacity
                 style={styles.addButton}
                 onPress={() => navigation.navigate("TabunganScreen")}
@@ -564,11 +726,19 @@ export default function LihatTabunganScreen({ navigation }) {
                 <Text style={styles.addButtonText}>Buat Tabungan Baru ✨</Text>
               </TouchableOpacity>
             )}
+            {searchQuery && (
+              <TouchableOpacity
+                style={styles.clearSearchButton}
+                onPress={clearSearch}
+              >
+                <Text style={styles.clearSearchText}>Hapus Pencarian</Text>
+              </TouchableOpacity>
+            )}
           </View>
         }
       />
 
-      {/* Floating Action Button */}
+      {/* FAB */}
       {tabunganList.length > 0 && (
         <TouchableOpacity
           style={styles.fab}
@@ -578,7 +748,7 @@ export default function LihatTabunganScreen({ navigation }) {
         </TouchableOpacity>
       )}
 
-      {/* Modal Tambah Nominal */}
+      {/* Modal */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -614,27 +784,48 @@ export default function LihatTabunganScreen({ navigation }) {
                   </Text>
                 </View>
 
-                {/* Info Reward */}
+                {/* Sisa yang bisa ditambahkan */}
+                <View style={styles.sisaAllowedBox}>
+                  <Ionicons name="alert-circle-outline" size={20} color="#2691B5" />
+                  <Text style={styles.sisaAllowedText}>
+                    Maksimal yang bisa ditambahkan:{" "}
+                    <Text style={styles.sisaAllowedNominal}>
+                      {formatCurrency(calculateMaxNominal(selectedTabungan))}
+                    </Text>
+                  </Text>
+                </View>
+
                 <View style={styles.rewardInfoBox}>
                   <Ionicons name="gift-outline" size={20} color="#F59E0B" />
                   <Text style={styles.rewardInfoText}>
-                    Dapatkan <Text style={styles.rewardHighlight}>30 poin</Text> setiap menabung!
+                    Dapatkan <Text style={styles.rewardHighlight}>30 poin</Text> ketika target mencapai 100%! 🎯
                   </Text>
                 </View>
 
                 <View style={styles.modalInputWrapper}>
                   <Text style={styles.modalInputLabel}>Nominal Tambahan</Text>
-                  <View style={styles.modalInput}>
+                  <View style={[
+                    styles.modalInput,
+                    nominalInput && !validateNominalInput(nominalInput, selectedTabungan).isValid && 
+                    styles.modalInputError
+                  ]}>
                     <Text style={styles.modalInputPrefix}>Rp</Text>
                     <TextInput
                       style={styles.modalInputField}
                       placeholder="0"
                       keyboardType="numeric"
                       value={nominalInput}
-                      onChangeText={(text) => setNominalInput(formatInputCurrency(text))}
+                      onChangeText={handleInputChange}
                       autoFocus
                     />
                   </View>
+                  
+                  {/* Validation feedback */}
+                  {nominalInput && !validateNominalInput(nominalInput, selectedTabungan).isValid && (
+                    <Text style={styles.validationErrorText}>
+                      {validateNominalInput(nominalInput, selectedTabungan).message}
+                    </Text>
+                  )}
                 </View>
 
                 <View style={styles.modalButtons}>
@@ -646,8 +837,13 @@ export default function LihatTabunganScreen({ navigation }) {
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={styles.modalSaveBtn}
+                    style={[
+                      styles.modalSaveBtn,
+                      (!nominalInput || !validateNominalInput(nominalInput, selectedTabungan).isValid) && 
+                      styles.modalSaveBtnDisabled
+                    ]}
                     onPress={handleTambahNominal}
+                    disabled={!nominalInput || !validateNominalInput(nominalInput, selectedTabungan).isValid}
                   >
                     <Ionicons name="add-circle" size={20} color="#fff" />
                     <Text style={styles.modalSaveText}>Tambah Saldo 💸</Text>
@@ -686,6 +882,9 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     borderBottomLeftRadius: 25,
     borderBottomRightRadius: 25,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: 28,
@@ -698,16 +897,44 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#E0F2FE",
   },
-  userInfoText: {
-    fontSize: 12,
-    color: "#E0F2FE",
-    marginTop: 5,
+  sampahBtn: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  // Search Styles
+  searchContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  searchInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 15,
+    shadowColor: "#2691B5",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+    gap: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: "#1E293B",
   },
   filterContainer: {
     flexDirection: "row",
     backgroundColor: "#fff",
     marginHorizontal: 20,
-    marginTop: -15,
+    marginTop: 8,
     padding: 8,
     borderRadius: 15,
     gap: 8,
@@ -922,24 +1149,43 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     flexDirection: "row",
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   tambahBtn: {
-    flex: 1,
+    flex: 2,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#2691B5",
-    paddingVertical: 14,
-    borderRadius: 15,
-    gap: 8,
-    shadowColor: "#2691B5",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    gap: 6,
+    minHeight: 44,
+  },
+  editBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F59E0B",
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    gap: 6,
+    minHeight: 44,
+    marginHorizontal: 4,
+  },
+  editBtnSmall: {
+    flex: 1,
+  },
+  editBtnDisabled: {
+    backgroundColor: "#94A3B8",
+    opacity: 0.6,
   },
   deleteBtn: {
     flex: 1,
@@ -947,22 +1193,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#EF4444",
-    paddingVertical: 14,
-    borderRadius: 15,
-    gap: 8,
-    shadowColor: "#EF4444",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    gap: 6,
+    minHeight: 44,
+    marginHorizontal: 4,
   },
-  deleteBtnSmall: {
-    flex: 0.5,
+  deleteBtnSmaller: {
+    flex: 1,
+  },
+  deleteBtnDisabled: {
+    backgroundColor: "#CBD5E1",
+    opacity: 0.6,
   },
   actionBtnText: {
     color: "#fff",
     fontWeight: "bold",
-    fontSize: 14,
+    fontSize: 12,
   },
   emptyContainer: {
     alignItems: "center",
@@ -1004,6 +1252,17 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  clearSearchButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: "#E2E8F0",
+    borderRadius: 20,
+  },
+  clearSearchText: {
+    color: "#64748B",
+    fontWeight: "600",
+    fontSize: 14,
   },
   fab: {
     position: "absolute",
@@ -1082,6 +1341,26 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#1E293B",
   },
+  sisaAllowedBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E0F2FE',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: '#BAE6FD',
+    gap: 8,
+  },
+  sisaAllowedText: {
+    fontSize: 14,
+    color: '#0369A1',
+    flex: 1,
+  },
+  sisaAllowedNominal: {
+    fontWeight: 'bold',
+    color: '#2691B5',
+  },
   rewardInfoBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1121,6 +1400,10 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     paddingHorizontal: 16,
   },
+  modalInputError: {
+    borderColor: "#EF4444",
+    backgroundColor: "#FEF2F2",
+  },
   modalInputPrefix: {
     fontSize: 18,
     fontWeight: "bold",
@@ -1133,6 +1416,13 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#1E293B",
     paddingVertical: 14,
+  },
+  validationErrorText: {
+    color: "#EF4444",
+    fontSize: 12,
+    marginTop: 8,
+    fontWeight: "500",
+    textAlign: "center",
   },
   modalButtons: {
     flexDirection: "row",
@@ -1167,6 +1457,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
+  },
+  modalSaveBtnDisabled: {
+    backgroundColor: "#94A3B8",
+    opacity: 0.6,
   },
   modalSaveText: {
     fontSize: 16,

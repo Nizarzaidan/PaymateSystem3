@@ -29,17 +29,25 @@ export default function KelolaAkunScreen() {
   const [editing, setEditing] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
 
-  // Date picker state
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    oldPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  
+  // State untuk toggle visibility password
+  const [showPassword, setShowPassword] = useState({
+    oldPassword: false,
+    newPassword: false,
+    confirmPassword: false
+  });
+
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
-
-  // Gender picker state
   const [showGenderPicker, setShowGenderPicker] = useState(false);
-
-  // Image state
   const [selectedImage, setSelectedImage] = useState(null);
 
-  // Form state
   const [formData, setFormData] = useState({
     namaLengkap: "",
     email: "",
@@ -54,6 +62,14 @@ export default function KelolaAkunScreen() {
     loadUserData();
   }, []);
 
+  // Fungsi untuk toggle visibility password
+  const togglePasswordVisibility = (field) => {
+    setShowPassword(prev => ({
+      ...prev,
+      [field]: !prev[field]
+    }));
+  };
+
   const loadUserData = async () => {
     try {
       const userDataString = await AsyncStorage.getItem("userData");
@@ -61,7 +77,6 @@ export default function KelolaAkunScreen() {
         const data = JSON.parse(userDataString);
         setUserData(data);
         
-        // PERBAIKAN: Handle semua kemungkinan field name
         const namaLengkap = data.nama_lengkap || data.namaLengkap || "";
         const email = data.email || "";
         const telepon = data.telepon || "";
@@ -94,6 +109,66 @@ export default function KelolaAkunScreen() {
     }
   };
 
+  const handleChangePassword = async () => {
+    if (!passwordData.oldPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      Alert.alert("Error", "Semua field harus diisi");
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      Alert.alert("Error", "Password baru minimal 6 karakter");
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      Alert.alert("Error", "Konfirmasi password tidak sesuai");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const token = await AsyncStorage.getItem("jwtToken");
+      const userDataString = await AsyncStorage.getItem("userData");
+      const currentUserData = JSON.parse(userDataString);
+      
+      const userId = currentUserData.id_pengguna || currentUserData.idPengguna;
+
+      const response = await axios.put(
+        `${BASE_URL}/pengguna/change-password`,
+        {
+          idPengguna: userId,
+          oldPassword: passwordData.oldPassword,
+          newPassword: passwordData.newPassword
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.data.code === 200) {
+        Alert.alert("Sukses", "Password berhasil diubah");
+        setShowChangePassword(false);
+        setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
+        // Reset visibility state
+        setShowPassword({
+          oldPassword: false,
+          newPassword: false,
+          confirmPassword: false
+        });
+      } else {
+        Alert.alert("Error", response.data.message || "Gagal mengubah password");
+      }
+    } catch (error) {
+      console.error("Change password error:", error);
+      Alert.alert("Error", error.response?.data?.message || "Terjadi kesalahan");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleUpdateProfile = async () => {
     if (!formData.namaLengkap.trim()) {
       Alert.alert("Error", "Nama lengkap tidak boleh kosong");
@@ -107,7 +182,6 @@ export default function KelolaAkunScreen() {
       const userDataString = await AsyncStorage.getItem("userData");
       const currentUserData = JSON.parse(userDataString);
       
-      // Upload foto profil terlebih dahulu jika ada gambar baru
       let fotoProfilUrl = formData.fotoProfil;
       if (selectedImage && selectedImage !== formData.fotoProfil) {
         console.log("Uploading new image...");
@@ -141,17 +215,14 @@ export default function KelolaAkunScreen() {
       console.log("Update response:", response.data);
 
       if (response.data.code === 200 || response.status === 200) {
-        // PERBAIKAN: Simpan data dengan kedua format (camelCase dan snake_case)
         const updatedUserData = {
           ...currentUserData,
-          // camelCase
           namaLengkap: formData.namaLengkap,
           telepon: formData.telepon,
           namaPanggilan: formData.namaPanggilan,
           jenisKelamin: formData.jenisKelamin,
           tanggalLahir: formData.tanggalLahir,
           fotoProfil: fotoProfilUrl,
-          // snake_case (untuk kompatibilitas)
           nama_lengkap: formData.namaLengkap,
           nama_panggilan: formData.namaPanggilan,
           jenis_kelamin: formData.jenisKelamin,
@@ -184,43 +255,8 @@ export default function KelolaAkunScreen() {
       setUploadingImage(true);
       console.log("Starting image upload...");
       
-      // PERBAIKAN: Jika tidak ada endpoint upload, simpan sebagai base64 atau return URI
-      // Untuk sementara, kita return URI asli karena mungkin backend belum ada endpoint upload
       console.log("No upload endpoint, returning original URI");
       return imageUri;
-      
-      // Kode di bawah ini untuk ketika backend sudah siap
-      /*
-      const formData = new FormData();
-      const filename = imageUri.split('/').pop();
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : 'image/jpeg';
-
-      formData.append('file', {
-        uri: imageUri,
-        name: filename,
-        type: type,
-      });
-
-      const token = await AsyncStorage.getItem("jwtToken");
-      
-      const response = await axios.post(
-        `${BASE_URL}/upload/foto-profil`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
-
-      if (response.data && response.data.url) {
-        return response.data.url;
-      }
-      
-      return imageUri; // Fallback jika upload gagal
-      */
     } catch (error) {
       console.error("Error uploading image:", error);
       Alert.alert("Info", "Foto profil disimpan secara lokal");
@@ -291,61 +327,8 @@ export default function KelolaAkunScreen() {
   };
 
   const getImageSource = () => {
-    // Prioritaskan selectedImage (gambar baru), lalu formData.fotoProfil
     return selectedImage || formData.fotoProfil;
   };
-
-  const GenderPickerModal = () => (
-    <Modal
-      visible={showGenderPicker}
-      transparent={true}
-      animationType="slide"
-      onRequestClose={() => setShowGenderPicker(false)}
-    >
-      <TouchableOpacity 
-        style={styles.modalOverlay}
-        activeOpacity={1}
-        onPress={() => setShowGenderPicker(false)}
-      >
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Pilih Jenis Kelamin</Text>
-            <TouchableOpacity onPress={() => setShowGenderPicker(false)}>
-              <Ionicons name="close" size={24} color="#374151" />
-            </TouchableOpacity>
-          </View>
-          
-          <TouchableOpacity
-            style={styles.genderOption}
-            onPress={() => {
-              handleChange('jenisKelamin', 'L'); // PERBAIKAN: Gunakan 'L' dan 'P' sesuai backend
-              setShowGenderPicker(false);
-            }}
-          >
-            <Ionicons name="male" size={24} color="#2691B5" />
-            <Text style={styles.genderText}>Pria</Text>
-            {formData.jenisKelamin === 'L' && (
-              <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.genderOption}
-            onPress={() => {
-              handleChange('jenisKelamin', 'P'); // PERBAIKAN: Gunakan 'L' dan 'P' sesuai backend
-              setShowGenderPicker(false);
-            }}
-          >
-            <Ionicons name="female" size={24} color="#EC4899" />
-            <Text style={styles.genderText}>Wanita</Text>
-            {formData.jenisKelamin === 'P' && (
-              <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-            )}
-          </TouchableOpacity>
-        </View>
-      </TouchableOpacity>
-    </Modal>
-  );
 
   const getGenderDisplayText = () => {
     switch (formData.jenisKelamin) {
@@ -359,7 +342,6 @@ export default function KelolaAkunScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#2691B5" barStyle="light-content" />
       
-      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
@@ -372,7 +354,6 @@ export default function KelolaAkunScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* FOTO PROFIL */}
         <View style={styles.photoSection}>
           <TouchableOpacity onPress={editing ? pickImage : null}>
             <View style={styles.photoContainer}>
@@ -401,7 +382,6 @@ export default function KelolaAkunScreen() {
           {editing && <Text style={styles.photoText}>Tap untuk mengubah foto</Text>}
         </View>
 
-        {/* FORM EDIT */}
         <View style={styles.formContainer}>
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Nama Lengkap *</Text>
@@ -477,16 +457,25 @@ export default function KelolaAkunScreen() {
           </View>
         </View>
 
-        {/* ACTION BUTTONS */}
         <View style={styles.actionContainer}>
           {!editing ? (
-            <TouchableOpacity
-              style={styles.editButton}
-              onPress={() => setEditing(true)}
-            >
-              <Ionicons name="create-outline" size={20} color="#fff" />
-              <Text style={styles.editButtonText}>Edit Profil</Text>
-            </TouchableOpacity>
+            <View style={styles.buttonGroup}>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => setEditing(true)}
+              >
+                <Ionicons name="create-outline" size={20} color="#fff" />
+                <Text style={styles.editButtonText}>Edit Profil</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.changePasswordButton}
+                onPress={() => setShowChangePassword(true)}
+              >
+                <Ionicons name="lock-closed-outline" size={20} color="#2691B5" />
+                <Text style={styles.changePasswordButtonText}>Ganti Password</Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             <View style={styles.editActions}>
               <TouchableOpacity
@@ -494,7 +483,7 @@ export default function KelolaAkunScreen() {
                 onPress={() => {
                   setEditing(false);
                   setSelectedImage(null);
-                  loadUserData(); // Reload data dari AsyncStorage
+                  loadUserData();
                 }}
               >
                 <Text style={styles.cancelButtonText}>Batal</Text>
@@ -518,7 +507,6 @@ export default function KelolaAkunScreen() {
         </View>
       </ScrollView>
 
-      {/* Date Picker */}
       {showDatePicker && (
         <DateTimePicker
           value={selectedDate}
@@ -530,8 +518,188 @@ export default function KelolaAkunScreen() {
         />
       )}
 
-      {/* Gender Picker Modal */}
-      <GenderPickerModal />
+      <Modal
+        visible={showGenderPicker}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowGenderPicker(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowGenderPicker(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Pilih Jenis Kelamin</Text>
+              <TouchableOpacity onPress={() => setShowGenderPicker(false)}>
+                <Ionicons name="close" size={24} color="#374151" />
+              </TouchableOpacity>
+            </View>
+            
+            <TouchableOpacity
+              style={styles.genderOption}
+              onPress={() => {
+                handleChange('jenisKelamin', 'L');
+                setShowGenderPicker(false);
+              }}
+            >
+              <Ionicons name="male" size={24} color="#2691B5" />
+              <Text style={styles.genderText}>Pria</Text>
+              {formData.jenisKelamin === 'L' && (
+                <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.genderOption}
+              onPress={() => {
+                handleChange('jenisKelamin', 'P');
+                setShowGenderPicker(false);
+              }}
+            >
+              <Ionicons name="female" size={24} color="#EC4899" />
+              <Text style={styles.genderText}>Wanita</Text>
+              {formData.jenisKelamin === 'P' && (
+                <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+              )}
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal
+        visible={showChangePassword}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => {
+          setShowChangePassword(false);
+          setShowPassword({
+            oldPassword: false,
+            newPassword: false,
+            confirmPassword: false
+          });
+        }}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => {
+            setShowChangePassword(false);
+            setShowPassword({
+              oldPassword: false,
+              newPassword: false,
+              confirmPassword: false
+            });
+          }}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Ganti Password</Text>
+              <TouchableOpacity onPress={() => {
+                setShowChangePassword(false);
+                setShowPassword({
+                  oldPassword: false,
+                  newPassword: false,
+                  confirmPassword: false
+                });
+              }}>
+                <Ionicons name="close" size={24} color="#374151" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView 
+              style={styles.modalBody}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Password Lama</Text>
+                <View style={styles.passwordInputContainer}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    value={passwordData.oldPassword}
+                    onChangeText={(value) => setPasswordData(prev => ({...prev, oldPassword: value}))}
+                    placeholder="Masukkan password lama"
+                    secureTextEntry={!showPassword.oldPassword}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity 
+                    style={styles.eyeIcon}
+                    onPress={() => togglePasswordVisibility('oldPassword')}
+                  >
+                    <Ionicons 
+                      name={showPassword.oldPassword ? "eye-off" : "eye"} 
+                      size={20} 
+                      color="#9CA3AF" 
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Password Baru</Text>
+                <View style={styles.passwordInputContainer}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    value={passwordData.newPassword}
+                    onChangeText={(value) => setPasswordData(prev => ({...prev, newPassword: value}))}
+                    placeholder="Masukkan password baru (min. 6 karakter)"
+                    secureTextEntry={!showPassword.newPassword}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity 
+                    style={styles.eyeIcon}
+                    onPress={() => togglePasswordVisibility('newPassword')}
+                  >
+                    <Ionicons 
+                      name={showPassword.newPassword ? "eye-off" : "eye"} 
+                      size={20} 
+                      color="#9CA3AF" 
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Konfirmasi Password Baru</Text>
+                <View style={styles.passwordInputContainer}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    value={passwordData.confirmPassword}
+                    onChangeText={(value) => setPasswordData(prev => ({...prev, confirmPassword: value}))}
+                    placeholder="Konfirmasi password baru"
+                    secureTextEntry={!showPassword.confirmPassword}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity 
+                    style={styles.eyeIcon}
+                    onPress={() => togglePasswordVisibility('confirmPassword')}
+                  >
+                    <Ionicons 
+                      name={showPassword.confirmPassword ? "eye-off" : "eye"} 
+                      size={20} 
+                      color="#9CA3AF" 
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.actionButton, styles.saveButton]}
+                onPress={handleChangePassword}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Ganti Password</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -640,6 +808,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#111827",
   },
+  passwordInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F9FAFB",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 10,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    fontSize: 16,
+    color: "#111827",
+  },
+  eyeIcon: {
+    padding: 10,
+    marginRight: 5,
+  },
   selectInput: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -666,6 +853,9 @@ const styles = StyleSheet.create({
   actionContainer: {
     marginBottom: 30,
   },
+  buttonGroup: {
+    gap: 12,
+  },
   editButton: {
     backgroundColor: "#2691B5",
     flexDirection: "row",
@@ -677,6 +867,23 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     color: "white",
+    fontSize: 16,
+    fontWeight: "700",
+    marginLeft: 8,
+  },
+  changePasswordButton: {
+    backgroundColor: "#FFFFFF",
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 15,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#2691B5",
+    elevation: 3,
+  },
+  changePasswordButtonText: {
+    color: "#2691B5",
     fontSize: 16,
     fontWeight: "700",
     marginLeft: 8,
@@ -724,7 +931,8 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: "row",
@@ -751,5 +959,8 @@ const styles = StyleSheet.create({
     color: "#374151",
     marginLeft: 15,
     flex: 1,
+  },
+  modalBody: {
+    maxHeight: '80%',
   },
 });

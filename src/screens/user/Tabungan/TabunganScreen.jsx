@@ -10,6 +10,10 @@ import {
   ScrollView,
   ActivityIndicator,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -350,9 +354,14 @@ export default function TabunganScreen({ navigation }) {
         visible={showDatePicker}
         animationType="slide"
         transparent={true}
+        onRequestClose={() => setShowDatePicker(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.calendarContainer}>
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowDatePicker(false)}
+        >
+          <View style={styles.calendarContainer} onStartShouldSetResponder={() => true}>
             <View style={styles.calendarHeader}>
               <TouchableOpacity onPress={goToPreviousMonth}>
                 <Ionicons name="chevron-back" size={24} color="#2691B5" />
@@ -395,7 +404,7 @@ export default function TabunganScreen({ navigation }) {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
     );
   };
@@ -412,190 +421,205 @@ export default function TabunganScreen({ navigation }) {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Buat Tabungan Baru</Text>
-        <TouchableOpacity 
-          style={[styles.saveButton, loading && styles.saveButtonDisabled]}
-          onPress={saveTabungan}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={styles.saveText}>Simpan</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
-    
-      
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Upload Gambar */}
-        <Text style={styles.sectionTitle}>Foto Tabungan (Opsional)</Text>
-        <TouchableOpacity style={styles.uploadBox} onPress={pickImage}>
-          {image ? (
-            <Image source={{ uri: image }} style={styles.uploadedImage} />
-          ) : (
-            <>
-              <Ionicons name="image-outline" size={50} color="#2691B5" />
-              <Ionicons
-                name="add-circle"
-                size={20}
-                color="#2691B5"
-                style={styles.addIcon}
-              />
-            </>
-          )}
-        </TouchableOpacity>
-
-        {/* Nama Tabungan */}
-        <Text style={styles.sectionTitle}>Nama Tabungan</Text>
-        <View style={styles.inputWrapper}>
-          <Ionicons name="pricetag-outline" size={20} color="#64748B" />
-          <TextInput
-            style={styles.input}
-            placeholder="Contoh: Tabungan Liburan"
-            placeholderTextColor="#9CA3AF"
-            value={formData.namaTarget}
-            onChangeText={(text) => handleInputChange('namaTarget', text)}
-          />
-        </View>
-
-        {/* Target Tabungan */}
-        <Text style={styles.sectionTitle}>Target Tabungan</Text>
-        <View style={styles.inputWrapper}>
-          <Ionicons name="cash-outline" size={20} color="#64748B" />
-          <TextInput
-            style={styles.input}
-            placeholder="0"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="numeric"
-            value={formData.targetNominal}
-            onChangeText={(text) => handleInputChange('targetNominal', formatCurrency(text))}
-          />
-          <Text style={styles.currencyText}>Rp</Text>
-        </View>
-
-        {/* Mata Uang */}
-        <Text style={styles.sectionTitle}>Mata Uang</Text>
-        <View style={styles.inputWrapper}>
-          <Ionicons name="flag-outline" size={20} color="#64748B" />
-          <TextInput
-            style={[styles.input, styles.disabledInput]}
-            value="Indonesia Rupiah (IDR)"
-            placeholderTextColor="#9CA3AF"
-            editable={false}
-          />
-          <Ionicons name="chevron-down" size={18} color="#9CA3AF" />
-        </View>
-
-        {/* Tanggal Mulai */}
-        <Text style={styles.sectionTitle}>Tanggal Mulai</Text>
-        <View style={styles.inputWrapper}>
-          <Ionicons name="calendar-outline" size={20} color="#64748B" />
-          <TextInput
-            style={[styles.input, styles.disabledInput]}
-            value={formData.tanggalMulai}
-            editable={false}
-          />
-        </View>
-
-        {/* Tanggal Selesai */}
-        <Text style={styles.sectionTitle}>Tanggal Selesai</Text>
-        <TouchableOpacity 
-          style={styles.inputWrapper}
-          onPress={() => setShowDatePicker(true)}
-        >
-          <Ionicons name="calendar-outline" size={20} color="#64748B" />
-          <TextInput
-            style={[styles.input, !formData.tanggalSelesai && styles.placeholderText]}
-            placeholder="Pilih tanggal selesai"
-            placeholderTextColor="#9CA3AF"
-            value={formData.tanggalSelesai}
-            editable={false}
-            pointerEvents="none"
-          />
-          <Ionicons name="calendar" size={18} color="#2691B5" />
-        </TouchableOpacity>
-
-        {/* Rencana Pengisian */}
-        <Text style={styles.sectionTitle}>Rencana Pengisian</Text>
-        <View style={styles.planContainer}>
-          {[
-            { key: "harian", label: "Harian" },
-            { key: "mingguan", label: "Mingguan" }, 
-            { key: "bulanan", label: "Bulanan" }
-          ].map((plan) => (
-            <TouchableOpacity
-              key={plan.key}
-              style={[
-                styles.planButton,
-                selectedPlan === plan.key && styles.planButtonActive,
-              ]}
-              onPress={() => setSelectedPlan(plan.key)}
+    <KeyboardAvoidingView 
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.container}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Buat Tabungan Baru</Text>
+            <TouchableOpacity 
+              style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+              onPress={saveTabungan}
+              disabled={loading}
             >
-              <Text
-                style={[
-                  styles.planText,
-                  selectedPlan === plan.key && styles.planTextActive,
-                ]}
-              >
-                {plan.label}
-              </Text>
+              {loading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.saveText}>Simpan</Text>
+              )}
             </TouchableOpacity>
-          ))}
-        </View>
+          </View>
 
-        {/* Nominal Pengisian */}
-        <Text style={styles.sectionTitle}>Nominal Pengisian</Text>
-        <View style={styles.inputWrapper}>
-          <Ionicons name="wallet-outline" size={20} color="#64748B" />
-          <TextInput
-            style={styles.input}
-            placeholder="0"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="numeric"
-            value={formData.nominalPengisian}
-            onChangeText={(text) => handleInputChange('nominalPengisian', formatCurrency(text))}
-          />
-          <Text style={styles.currencyText}>Rp</Text>
-        </View>
+          <ScrollView 
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Upload Gambar */}
+            <Text style={styles.sectionTitle}>Foto Tabungan (Opsional)</Text>
+            <TouchableOpacity style={styles.uploadBox} onPress={pickImage}>
+              {image ? (
+                <Image source={{ uri: image }} style={styles.uploadedImage} />
+              ) : (
+                <>
+                  <Ionicons name="image-outline" size={50} color="#2691B5" />
+                  <Ionicons
+                    name="add-circle"
+                    size={20}
+                    color="#2691B5"
+                    style={styles.addIcon}
+                  />
+                </>
+              )}
+            </TouchableOpacity>
 
-        <View style={styles.infoBox}>
-          <Ionicons name="information-circle-outline" size={16} color="#2691B5" />
-          <Text style={styles.infoText}>
-            Nominal pengisian akan dihitung otomatis berdasarkan target, tanggal, dan frekuensi yang dipilih
-          </Text>
-        </View>
+            {/* Nama Tabungan */}
+            <Text style={styles.sectionTitle}>Nama Tabungan</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="pricetag-outline" size={20} color="#64748B" />
+              <TextInput
+                style={styles.input}
+                placeholder="Contoh: Tabungan Liburan"
+                placeholderTextColor="#9CA3AF"
+                value={formData.namaTarget}
+                onChangeText={(text) => handleInputChange('namaTarget', text)}
+                returnKeyType="next"
+              />
+            </View>
 
-        {/* Catatan */}
-        <Text style={styles.sectionTitle}>Catatan (Opsional)</Text>
-        <View style={[styles.inputWrapper, styles.textAreaWrapper]}>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Tambahkan catatan..."
-            placeholderTextColor="#9CA3AF"
-            multiline={true}
-            numberOfLines={3}
-            textAlignVertical="top"
-            value={formData.catatan}
-            onChangeText={(text) => handleInputChange('catatan', text)}
-          />
-        </View>
+            {/* Target Tabungan */}
+            <Text style={styles.sectionTitle}>Target Tabungan</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="cash-outline" size={20} color="#64748B" />
+              <TextInput
+                style={styles.input}
+                placeholder="0"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="numeric"
+                value={formData.targetNominal}
+                onChangeText={(text) => handleInputChange('targetNominal', formatCurrency(text))}
+                returnKeyType="done"
+              />
+              <Text style={styles.currencyText}>Rp</Text>
+            </View>
 
-        {/* Info */}
-        <View style={styles.infoBox}>
-          <Ionicons name="information-circle-outline" size={20} color="#2691B5" />
-          <Text style={styles.infoText}>
-            Tabungan akan secara otomatis menampilkan progress menuju target yang ditentukan.
-          </Text>
-        </View>
-      </ScrollView>
+            {/* Mata Uang */}
+            <Text style={styles.sectionTitle}>Mata Uang</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="flag-outline" size={20} color="#64748B" />
+              <TextInput
+                style={[styles.input, styles.disabledInput]}
+                value="Indonesia Rupiah (IDR)"
+                placeholderTextColor="#9CA3AF"
+                editable={false}
+              />
+              <Ionicons name="chevron-down" size={18} color="#9CA3AF" />
+            </View>
 
-      <CalendarModal />
-    </View>
+            {/* Tanggal Mulai */}
+            <Text style={styles.sectionTitle}>Tanggal Mulai</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="calendar-outline" size={20} color="#64748B" />
+              <TextInput
+                style={[styles.input, styles.disabledInput]}
+                value={formData.tanggalMulai}
+                editable={false}
+              />
+            </View>
+
+            {/* Tanggal Selesai */}
+            <Text style={styles.sectionTitle}>Tanggal Selesai</Text>
+            <TouchableOpacity 
+              style={styles.inputWrapper}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Ionicons name="calendar-outline" size={20} color="#64748B" />
+              <TextInput
+                style={[styles.input, !formData.tanggalSelesai && styles.placeholderText]}
+                placeholder="Pilih tanggal selesai"
+                placeholderTextColor="#9CA3AF"
+                value={formData.tanggalSelesai}
+                editable={false}
+                pointerEvents="none"
+              />
+              <Ionicons name="calendar" size={18} color="#2691B5" />
+            </TouchableOpacity>
+
+            {/* Rencana Pengisian */}
+            <Text style={styles.sectionTitle}>Rencana Pengisian</Text>
+            <View style={styles.planContainer}>
+              {[
+                { key: "harian", label: "Harian" },
+                { key: "mingguan", label: "Mingguan" }, 
+                { key: "bulanan", label: "Bulanan" }
+              ].map((plan) => (
+                <TouchableOpacity
+                  key={plan.key}
+                  style={[
+                    styles.planButton,
+                    selectedPlan === plan.key && styles.planButtonActive,
+                  ]}
+                  onPress={() => setSelectedPlan(plan.key)}
+                >
+                  <Text
+                    style={[
+                      styles.planText,
+                      selectedPlan === plan.key && styles.planTextActive,
+                    ]}
+                  >
+                    {plan.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Nominal Pengisian */}
+            <Text style={styles.sectionTitle}>Nominal Pengisian</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="wallet-outline" size={20} color="#64748B" />
+              <TextInput
+                style={styles.input}
+                placeholder="0"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="numeric"
+                value={formData.nominalPengisian}
+                onChangeText={(text) => handleInputChange('nominalPengisian', formatCurrency(text))}
+                returnKeyType="done"
+              />
+              <Text style={styles.currencyText}>Rp</Text>
+            </View>
+
+            <View style={styles.infoBox}>
+              <Ionicons name="information-circle-outline" size={16} color="#2691B5" />
+              <Text style={styles.infoText}>
+                Nominal pengisian akan dihitung otomatis berdasarkan target, tanggal, dan frekuensi yang dipilih
+              </Text>
+            </View>
+
+            {/* Catatan */}
+            <Text style={styles.sectionTitle}>Catatan (Opsional)</Text>
+            <View style={[styles.inputWrapper, styles.textAreaWrapper]}>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Tambahkan catatan..."
+                placeholderTextColor="#9CA3AF"
+                multiline={true}
+                numberOfLines={3}
+                textAlignVertical="top"
+                value={formData.catatan}
+                onChangeText={(text) => handleInputChange('catatan', text)}
+                returnKeyType="done"
+                blurOnSubmit={true}
+              />
+            </View>
+
+            {/* Info */}
+            <View style={styles.infoBox}>
+              <Ionicons name="information-circle-outline" size={20} color="#2691B5" />
+              <Text style={styles.infoText}>
+                Tabungan akan secara otomatis menampilkan progress menuju target yang ditentukan.
+              </Text>
+            </View>
+          </ScrollView>
+
+          <CalendarModal />
+        </View>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -604,6 +628,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F8FAFC",
     padding: 20,
+  },
+  scrollContent: {
+    paddingBottom: 40,
   },
   loadingContainer: {
     flex: 1,
@@ -751,6 +778,7 @@ const styles = StyleSheet.create({
   textArea: {
     minHeight: 70,
     textAlignVertical: "top",
+    paddingTop: 8,
   },
   infoBox: {
     flexDirection: "row",

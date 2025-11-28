@@ -132,6 +132,13 @@ export default function ProfileScreen() {
       onPress: () => navigation.navigate("RewardTarget"), 
       showArrow: true
     },
+    {
+      id: 4,
+      title: "Leaderboard 🏆",
+      icon: "podium-outline",
+      onPress: () => navigation.navigate("LeaderboardScreen"),
+      showArrow: true
+    },
   ];
 
   const profilePhoto = getProfilePhoto();

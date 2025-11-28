@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BASE_URL = "http://10.174.216.196:8080/api";
+const BASE_URL = "http://192.168.1.89:8080/api";
 
 // Instance axios dengan config lengkap
 const api = axios.create({

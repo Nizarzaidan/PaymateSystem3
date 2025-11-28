@@ -13,20 +13,43 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCalendarsUsageDescription": "Aplikasi memerlukan akses kalender untuk menambahkan pengingat tagihan.",
+        "NSRemindersUsageDescription": "Aplikasi memerlukan akses pengingat untuk notifikasi tagihan."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.izzazilzul.PaymateSystem3",
+      "permissions": [
+        "READ_CALENDAR",
+        "WRITE_CALENDAR",
+        "POST_NOTIFICATIONS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Aplikasi memerlukan akses kalender untuk menambahkan pengingat tagihan."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#2691B5"
+        }
+      ]
     ]
   }
 }
